@@ -8,9 +8,9 @@ Projet transverse
 (see also https://pypi.org/project/sacrebleu/)
 
 ## Pyter
-pip3 install pyter
+```pip3 install pyter```
 (see also https://pypi.org/project/pyter/)
 
 ## ntlk (for nist and meteor metrics)
-pip3 install nltk
+```pip3 install nltk```
 (see also https://pypi.org/project/nltk/)
