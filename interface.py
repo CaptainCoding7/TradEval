@@ -36,6 +36,8 @@ import pyter
 from algorithims import *
 from match import *
 
+from fuzzywuzzy.fuzzywuzzy import fuzz
+
 
 
 ############### root PRINCIPALE  ######################
@@ -98,7 +100,6 @@ def loadSrcFile():
     print(srcFile+ " loaded")
     textToShow=file_to_string(srcFile)
     t3.delete('1.0',END)
-    t3.insert(END, textToShow)
     splittedText=textToShow.split('\n')
     i=1
     for s in splittedText:
@@ -137,7 +138,7 @@ def evaluate(scoresMatrice):
     i=1
     str_score=''
 
-    scoresMatrice.append(('Numéro de phrase','Phrase de référence', 'Phrase à évaluer','Score Bleu', 'Score Nist', 'Score Meteor'))
+    scoresMatrice.append(('Numéro de phrase','Phrase de référence', 'Phrase à évaluer','Score Bleu', 'Score Nist', 'Score Meteor','Score Wer', 'Score Ter'))
 
     for r,h in zip(refSent,hypSent):
         # decomposition au mot pour le calcul du score nist
@@ -169,20 +170,25 @@ def evaluate(scoresMatrice):
 
         print("---- Fuzzy Matching: Phrase ",str(i))
         # bigrams
-        print("     Evaluation par groupe de 2 mots: ", trigram(h,r,2))
+        #print("     Evaluation par groupe de 2 mots: ", trigram(h,r,2))
         #trigrams
-        print("     Evaluation par groupe de 3 mots: ", trigram(h,r))
+        print("     Trigrams algorithm: ", trigram(h,r))
         #4grams
-        print("     Evaluation par groupe de 4 mots: ", trigram(h,r,4))
+        #print("     Evaluation par groupe de 4 mots: ", trigram(h,r,4))
         #5-grams
-        print("     Evaluation par groupe de 5 mots: ", trigram(h,r,5))
+        #print("     Evaluation par groupe de 5 mots: ", trigram(h,r,5))
+
+        print("     Levenshtein distance algorithm: ", levenshtein(h,r))
+        print("     Cosine algorithm ", cosine(h,r))
+        print("     Jaro-Winkler algorithm ", jaro_winkler(h,r))
+        #print("     With fuzzywuzzy package: ", fuzz.token_set_ratio(r,h))
 
         #print(extractOne(h, [r]))
 
 
         # affichage et stockage des données dans la matrice des scores
-        str_score+='--- Phrase n°'+str(i)+':    - Bleu = '+str(sentScoreBleu)+ '    - Nist = '+str(nistScore)+ '    - Meteor = '+str(nistScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+'\n'
-        scoresMatrice.append((str(i),str(sentScoreBleu),str(nistScore), str(meteorScore),'{:.0f}%'.format(werScore)))
+        str_score+='--- Phrase n°'+str(i)+':    - Bleu = '+str(sentScoreBleu)+ '    - Nist = '+str(nistScore)+ '    - Meteor = '+str(meteorScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+'\n'
+        scoresMatrice.append((str(i),r,h,str(sentScoreBleu),str(nistScore), str(meteorScore),'{:.0f}%'.format(werScore), str(terScore)))
 
         i+=1
         p.step()
