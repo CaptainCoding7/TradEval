@@ -4,7 +4,7 @@ Projet transverse
 # Python3 librairies installation
 
 ## Sacrebleu
-pip3 install sacrebleu
+```pip3 install sacrebleu```
 (see also https://pypi.org/project/sacrebleu/)
 
 ## Pyter
