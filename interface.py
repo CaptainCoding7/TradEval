@@ -9,8 +9,12 @@ from tkinter import*
 from tkinter.filedialog import askopenfilename
 import time
 import numpy as np
+import pandas as pd
 from enum import Enum
 import os
+from threading import Thread
+import concurrent.futures
+from queue import Queue
 
 import re       # regex
 from tkinter.ttk import Progressbar
@@ -107,7 +111,7 @@ def loadSrcFile():
         i+=1
     ####################################################################
 
-#### FONCTION REALISANT LE CALCUL DES SCORES
+#### FONCTION REALISANT LE CALCUL DES SCORES SUR UN TEXTE CHARGÉ
 
 def evaluate(scoresMatrice):
 
@@ -152,7 +156,17 @@ def evaluate(scoresMatrice):
         sentScoreBleu=bleu_splitted[2]
 
         #nist
-        nistScore= float("{:.2f}".format(sentence_nist([rw], hw)))
+        # the nist algorithms calcules with a default highest ngrams order equaled to 5
+        # so when the length of the sentence is below 5, a ZeroDivisionError occurs
+        # we need to handle it:
+        n=5
+        while True:
+            try:
+                nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
+                break;
+            except ZeroDivisionError:
+                print("Nist reevaluation... Decreasing of the highest n-gram order... ")
+                n-=1
 
         #meteor
         meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
@@ -161,7 +175,7 @@ def evaluate(scoresMatrice):
         wer = WER(rw, hw)
         distance, path, ref_mod, hyp_mod = wer.distance()
         werScore=100 * distance[len(rw)][len(hw)]/len(rw)
-        
+
         #ter
         terScore='%.3f' % pyter.ter(hw, rw)
 
@@ -169,18 +183,40 @@ def evaluate(scoresMatrice):
         ###### FUZZY MATCHING   /!\ SPLIT PAR GROUPES DE CARACTERES !!
 
         print("---- Fuzzy Matching: Phrase ",str(i))
+        print("ref: ",r)
+        print("hyp: ",h)
+
+        #first, put the sentences into files
+        f = open("ref_sentence.txt", "w")
+        f.write(r)
+        f.close()
+
+        f = open("hyp_sentence.txt", "w")
+        f.write(h)
+        f.close()
+
+        # compilation
+        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
+        # execution
+        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.3 -N 4 -n 1 [--ml 10] -P < hyp_sentence.txt")
+
+        # deletion
+        os.system("rm ref_sentence*")
+        os.system("rm hyp_sentence*")
+
+
         # bigrams
         #print("     Evaluation par groupe de 2 mots: ", trigram(h,r,2))
         #trigrams
-        print("     Trigrams algorithm: ", trigram(h,r))
+        #print("     Trigrams algorithm: ", trigram(h,r))
         #4grams
         #print("     Evaluation par groupe de 4 mots: ", trigram(h,r,4))
         #5-grams
         #print("     Evaluation par groupe de 5 mots: ", trigram(h,r,5))
 
-        print("     Levenshtein distance algorithm: ", levenshtein(h,r))
-        print("     Cosine algorithm ", cosine(h,r))
-        print("     Jaro-Winkler algorithm ", jaro_winkler(h,r))
+        #print("     Levenshtein distance algorithm: ", levenshtein(h,r))
+        #print("     Cosine algorithm ", cosine(h,r))
+        #print("     Jaro-Winkler algorithm ", jaro_winkler(h,r))
         #print("     With fuzzywuzzy package: ", fuzz.token_set_ratio(r,h))
 
         #print(extractOne(h, [r]))
@@ -201,6 +237,186 @@ def evaluate(scoresMatrice):
     t4.delete('1.0',END)
     t4.insert(END, str_score)
 
+    
+def scoresProcessingSentence(r,h,sentCounter):
+    
+    rw=r.split(" ")
+    hw=h.split(" ")
+
+    #bleu
+    #sentScoreBleu=list_bleu([r], [h])
+    b=sacrebleu.corpus_bleu([h], [[r]])
+    bleu_splitted=str(b).split()
+    sentScoreBleu=bleu_splitted[2]
+    scoresMatrice[sentCounter][0]=sentScoreBleu
+
+    
+    #nist
+    # the nist algorithms calcules with a default highest ngrams order equaled to 5
+    # so when the length of the sentence is below 5, a ZeroDivisionError occurs
+    # we need to handle it:
+    n=5
+    while True:
+        try:
+            nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
+            break;
+        except ZeroDivisionError:
+            print("Nist reevaluation... Decreasing of the highest n-gram order... ")
+            n-=1
+
+    scoresMatrice[sentCounter][1]=nistScore
+
+    #meteor
+    meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+    scoresMatrice[sentCounter][2]=meteorScore
+
+    # wer
+    wer = WER(rw, hw)
+    distance, path, ref_mod, hyp_mod = wer.distance()
+    werScore=100 * distance[len(rw)][len(hw)]/len(rw)
+    scoresMatrice[sentCounter][3]=werScore
+
+    #ter
+    terScore='%.3f' % pyter.ter(hw, rw)
+    scoresMatrice[sentCounter][4]=terScore
+
+    print("SENTENCE ",sentCounter, " calculus completed")
+
+
+def scoresProcessingColumn(refArray,hypArray):
+
+    global scoresMatrice
+    scoresMatrice = [[None] * 5] * len(refArray)
+
+    sentCounter=0
+
+    while sentCounter<len(refArray):
+    
+        que=Queue()
+        threadList=list()
+
+        for j in range(10):
+            
+            print("LINE ",sentCounter+1)
+
+            r=refArray[sentCounter]
+            h=hypArray[sentCounter]
+            print(r)
+            print(h)
+
+            #t = Thread(target=lambda q, arg1: q.put(scoresProcessingSentence(r,h,sentCounter)), args=(que, 'queue'))
+            t=Thread(target=scoresProcessingSentence(r,h,sentCounter))
+            t.start()
+            threadList.append(t)
+
+            sentCounter+=1
+
+        # Join all the threads
+        for t in threadList:
+            t.join()
+
+    """
+
+    with concurrent.futures.ThreadPoolExecutor(10) as executor:
+        futures=[]
+
+        for r,h in zip(refArray,hypArray):
+    
+            print("LINE ",sentCounter+1)
+
+            print(r)
+            print(h)
+
+            futures.append(executor.submit(scoresProcessingSentence,r,h,sentCounter))
+            sentCounter+=1
+
+        #for future in concurrent.futures.as_completed(futures):
+        #    print(future.done())
+
+    print("end of scores calculation for this column")
+
+    """
+
+    return scoresMatrice
+
+
+    """
+    for r,h in zip(refArray,hypArray):
+    
+        print("LINE ",sentCounter+1)
+        print(r)
+        print(h)
+
+        t = Thread(target=lambda q, arg1: q.put(scoresProcessingSentence(r,h,sentCounter)), args=(que, 'queue'))
+        t.start()
+        threadList.append(t)
+
+        sentCounter+=1
+    
+    # Join all the threads
+    for t in threadList:
+        t.join()
+    """
+
+    """
+
+
+    """
+
+
+
+def write_all_scores_into_csv():
+
+    global csvFile
+    scoresSent=[]
+    scorename=['bleu','nist','meteor','wer','ter']
+    nbScores=len(scorename)
+
+    csv='/home/paul/Documents/proj_tansv/datasets/adadelta_translation_copie.csv'
+
+    #stp contains (source,target,predictions)
+    stp = openLearningCsv(csv)
+
+    #creation of the dictionnary
+    # first we put the source sentences and the target sentences into a dataframe
+    d = {stp[0][0] : stp[0][1:],stp[1][0] : stp[1][1:]}
+    df = pd.DataFrame(d)
+
+    # headers insertion into the dataframe
+    num=1
+    nbRow=len(stp[2])
+    #nbRow=5 #test
+    nbCol=len(stp[2][0])
+    
+    for col in range(nbCol):
+        num+=1
+        pred_col_name=stp[2][0][col]
+
+        # insertion of the prediction strings of a same column
+        predSingleCol=[]
+        for i in range(1,nbRow):
+            predSingleCol.append(stp[2][i][col])
+        df.insert(num,pred_col_name,pd.Series(predSingleCol))
+
+        # scores calculus for a single column
+        scoresColumn=scoresProcessingColumn(stp[1][1:],predSingleCol)
+
+        # insertion of the scores
+        for i in range(nbScores):
+            num+=1
+            score_col_name = scorename[i]+" ("+pred_col_name+") "
+
+            currentScoreArray=[]
+            for j in range(len(scoresColumn)):
+                currentScoreArray.append(scoresColumn[j][i])
+            
+            df.insert(num,score_col_name,pd.Series(currentScoreArray),True)
+
+    print(df)
+
+    # write dataframe to csv
+    df.to_csv('AllScore.csv',index=False,header=True)
+    print("export ----")
 
 ##########################################################################""
 
@@ -350,6 +566,9 @@ scrollbar4.pack( side = RIGHT, fill = Y )
 t4 = Text(lf5,height=root.winfo_screenheight()/50,width=int(root.winfo_screenwidth()/12),yscrollcommand = scrollbar4.set, bg='#EAEAEA')
 t4.pack(expand=True, fill='both')
 scrollbar4.config(command = t4.yview )
+
+
+write_all_scores_into_csv()
 
 
 mainloop()
