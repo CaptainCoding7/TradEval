@@ -133,8 +133,8 @@ def evaluate(scoresMatrice):
 
 
     # score bleu pour tout le fichier
-    bleuScoreFile=file_bleu(refFile,hypFile)/100
-    print("bleu total= ",bleuScoreFile)
+    #bleuScoreFile=file_bleu(refFile,hypFile)/100
+    #print("bleu total= ",bleuScoreFile)
 
     refSent = file_to_listeSentence(refFile)
     hypSent = file_to_listeSentence(hypFile)
@@ -239,7 +239,11 @@ def evaluate(scoresMatrice):
 
     
 def scoresProcessingSentence(r,h,sentCounter):
-    
+
+    global scoresMatrice
+
+    print("******* sentCounter : ",sentCounter, "*******")
+
     rw=r.split(" ")
     hw=h.split(" ")
 
@@ -287,6 +291,7 @@ def scoresProcessingColumn(refArray,hypArray):
 
     global scoresMatrice
     scoresMatrice = [[None] * 5] * len(refArray)
+    print(scoresMatrice)
 
     sentCounter=0
 
@@ -297,19 +302,25 @@ def scoresProcessingColumn(refArray,hypArray):
 
         for j in range(10):
             
-            print("LINE ",sentCounter+1)
+            if sentCounter<len(refArray):
+                print("LINE ",sentCounter+1)
 
-            r=refArray[sentCounter]
-            h=hypArray[sentCounter]
-            print(r)
-            print(h)
+                r=refArray[sentCounter]
+                h=hypArray[sentCounter]
+                print(r)
+                print(h)
 
-            #t = Thread(target=lambda q, arg1: q.put(scoresProcessingSentence(r,h,sentCounter)), args=(que, 'queue'))
-            t=Thread(target=scoresProcessingSentence(r,h,sentCounter))
-            t.start()
-            threadList.append(t)
+                #t = Thread(target=lambda q, arg1: q.put(scoresProcessingSentence(r,h,sentCounter)), args=(que, 'queue'))
+                t=Thread(target=scoresProcessingSentence(r,h,sentCounter))
+                t.start()
+                threadList.append(t)
 
-            sentCounter+=1
+                sentCounter+=1
+
+                print(scoresMatrice)
+
+            else:
+                break
 
         # Join all the threads
         for t in threadList:
@@ -377,15 +388,17 @@ def write_all_scores_into_csv():
     #stp contains (source,target,predictions)
     stp = openLearningCsv(csv)
 
+    nTest=5
+    epoch=0
     #creation of the dictionnary
     # first we put the source sentences and the target sentences into a dataframe
-    d = {stp[0][0] : stp[0][1:],stp[1][0] : stp[1][1:]}
+    d = {stp[0][0] : stp[0][1:nTest],stp[1][0] : stp[1][1:nTest]}
     df = pd.DataFrame(d)
 
     # headers insertion into the dataframe
     num=1
     nbRow=len(stp[2])
-    #nbRow=5 #test
+    nbRow=nTest #test
     nbCol=len(stp[2][0])
     
     for col in range(nbCol):
@@ -399,16 +412,22 @@ def write_all_scores_into_csv():
         df.insert(num,pred_col_name,pd.Series(predSingleCol))
 
         # scores calculus for a single column
-        scoresColumn=scoresProcessingColumn(stp[1][1:],predSingleCol)
+        scoresColumn=scoresProcessingColumn(stp[1][1:nTest],predSingleCol)
+
+        if (num-2)%6==0:
+            epoch+=1
+            print("EPOCH ",epoch)
 
         # insertion of the scores
         for i in range(nbScores):
+
             num+=1
             score_col_name = scorename[i]+" ("+pred_col_name+") "
 
             currentScoreArray=[]
             for j in range(len(scoresColumn)):
                 currentScoreArray.append(scoresColumn[j][i])
+                print(scoresColumn[j][i])
             
             df.insert(num,score_col_name,pd.Series(currentScoreArray),True)
 
