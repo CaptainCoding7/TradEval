@@ -253,7 +253,6 @@ def scoresProcessingSentence(r,h,sentCounter):
     bleu_splitted=str(b).split()
     sentScoreBleu=bleu_splitted[2]
     scoresMatrice[sentCounter][0]=sentScoreBleu
-
     
     #nist
     # the nist algorithms calcules with a default highest ngrams order equaled to 5
@@ -267,42 +266,52 @@ def scoresProcessingSentence(r,h,sentCounter):
         except ZeroDivisionError:
             print("Nist reevaluation... Decreasing of the highest n-gram order... ")
             n-=1
-
     scoresMatrice[sentCounter][1]=nistScore
 
+    
     #meteor
     meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
     scoresMatrice[sentCounter][2]=meteorScore
-
+    
     # wer
     wer = WER(rw, hw)
     distance, path, ref_mod, hyp_mod = wer.distance()
     werScore=100 * distance[len(rw)][len(hw)]/len(rw)
     scoresMatrice[sentCounter][3]=werScore
 
+
     #ter
     terScore='%.3f' % pyter.ter(hw, rw)
     scoresMatrice[sentCounter][4]=terScore
 
-    print("SENTENCE ",sentCounter, " calculus completed")
+
+    print("SENTENCE ",sentCounter+1, " calculus completed")
+
+
+
+def test(r,h,sc):
+    time.sleep(sc/10)
 
 
 def scoresProcessingColumn(refArray,hypArray):
 
     global scoresMatrice
-    scoresMatrice = [[None] * 5] * len(refArray)
-    print(scoresMatrice)
 
+    l=len(refArray)
+    scoresMatrice = [[None] * 5 for i in range(l)]
     sentCounter=0
 
-    while sentCounter<len(refArray):
+    """
+
+    while sentCounter<l:
     
-        que=Queue()
+        #que=Queue()
+        wordnet.ensure_loaded()
         threadList=list()
 
         for j in range(10):
             
-            if sentCounter<len(refArray):
+            if sentCounter<l:
                 print("LINE ",sentCounter+1)
 
                 r=refArray[sentCounter]
@@ -311,13 +320,23 @@ def scoresProcessingColumn(refArray,hypArray):
                 print(h)
 
                 #t = Thread(target=lambda q, arg1: q.put(scoresProcessingSentence(r,h,sentCounter)), args=(que, 'queue'))
-                t=Thread(target=scoresProcessingSentence(r,h,sentCounter))
+                t=Thread(target=scoresProcessingSentence, args=(r,h,sentCounter))
+                #t=Thread(target=test(r,h,sentCounter))
                 t.start()
                 threadList.append(t)
 
-                sentCounter+=1
+                ## tests without threads
+                #test(r,h,sentCounter)
+                #scoresProcessingSentence(r,h,sentCounter)
+
+                #meteor
+                meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+                scoresMatrice[sentCounter][2]=meteorScore
+
 
                 print(scoresMatrice)
+
+                sentCounter+=1
 
             else:
                 break
@@ -325,9 +344,8 @@ def scoresProcessingColumn(refArray,hypArray):
         # Join all the threads
         for t in threadList:
             t.join()
-
     """
-
+    """
     with concurrent.futures.ThreadPoolExecutor(10) as executor:
         futures=[]
 
@@ -341,38 +359,48 @@ def scoresProcessingColumn(refArray,hypArray):
             futures.append(executor.submit(scoresProcessingSentence,r,h,sentCounter))
             sentCounter+=1
 
-        #for future in concurrent.futures.as_completed(futures):
-        #    print(future.done())
+            #meteor
+            meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+            scoresMatrice[sentCounter][2]=meteorScore
 
-    print("end of scores calculation for this column")
-
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
+    
     """
-
-    return scoresMatrice
-
-
     """
+    #wordnet.ensure_loaded()
+    threadList=list()
+
     for r,h in zip(refArray,hypArray):
     
         print("LINE ",sentCounter+1)
         print(r)
         print(h)
 
-        t = Thread(target=lambda q, arg1: q.put(scoresProcessingSentence(r,h,sentCounter)), args=(que, 'queue'))
-        t.start()
-        threadList.append(t)
+        #t = Thread(target=test, args=(r,h,sentCounter))
+        #t = Thread(target=scoresProcessingSentence, args=(r,h,sentCounter))
+        #t.start()
+        #threadList.append(t)
+
+        #scoresProcessingSentence(r,h,sentCounter)
+
+    """
+    """
+        #meteor
+        meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+        scoresMatrice[sentCounter][2]=meteorScore
+    """
+    """
+        test(sentCounter)
 
         sentCounter+=1
-    
+    """
     # Join all the threads
     for t in threadList:
         t.join()
-    """
-
-    """
 
 
-    """
+    return scoresMatrice
 
 
 
@@ -382,6 +410,7 @@ def write_all_scores_into_csv():
     scoresSent=[]
     scorename=['bleu','nist','meteor','wer','ter']
     nbScores=len(scorename)
+
 
     csv='/home/paul/Documents/proj_tansv/datasets/adadelta_translation_copie.csv'
 
@@ -400,6 +429,8 @@ def write_all_scores_into_csv():
     nbRow=len(stp[2])
     nbRow=nTest #test
     nbCol=len(stp[2][0])
+
+    start=time.time()
     
     for col in range(nbCol):
         num+=1
@@ -411,12 +442,12 @@ def write_all_scores_into_csv():
             predSingleCol.append(stp[2][i][col])
         df.insert(num,pred_col_name,pd.Series(predSingleCol))
 
-        # scores calculus for a single column
-        scoresColumn=scoresProcessingColumn(stp[1][1:nTest],predSingleCol)
-
         if (num-2)%6==0:
             epoch+=1
-            print("EPOCH ",epoch)
+        print("EPOCH ",epoch)
+
+        # scores calculus for a single column
+        scoresColumn=scoresProcessingColumn(stp[1][1:nTest],predSingleCol)
 
         # insertion of the scores
         for i in range(nbScores):
@@ -427,11 +458,14 @@ def write_all_scores_into_csv():
             currentScoreArray=[]
             for j in range(len(scoresColumn)):
                 currentScoreArray.append(scoresColumn[j][i])
-                print(scoresColumn[j][i])
+                #print(scoresColumn[j][i])
             
             df.insert(num,score_col_name,pd.Series(currentScoreArray),True)
 
-    print(df)
+    #print(df)
+
+    end=time.time()
+    print("ELAPSED TIME:::: ", end-start)
 
     # write dataframe to csv
     df.to_csv('AllScore.csv',index=False,header=True)
