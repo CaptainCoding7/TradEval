@@ -27,8 +27,7 @@ from collections import Counter
 from files_manager import *
 
 # import des bibiotheques de calcul de scores
-from bleu import file_bleu
-from bleu import list_bleu
+
 import sacrebleu
 from nltk.util import ngrams
 from nist import sentence_nist
@@ -41,7 +40,7 @@ import pyter
 from algorithims import *
 from match import *
 
-from fuzzywuzzy.fuzzywuzzy import fuzz
+from fuzzywuzzy import fuzz
 
 
 
