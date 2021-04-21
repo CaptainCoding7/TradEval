@@ -8,13 +8,14 @@
 from tkinter import*
 from tkinter.filedialog import askopenfilename
 import time
+import asyncio
 import numpy as np
 import pandas as pd
 from enum import Enum
 import os
 from threading import Thread
 import concurrent.futures
-from queue import Queue
+from multiprocessing import Process
 
 import re       # regex
 from tkinter.ttk import Progressbar
@@ -268,20 +269,20 @@ def scoresProcessingSentence(r,h,sentCounter):
             n-=1
     scoresMatrice[sentCounter][1]=nistScore
 
-    
+    """
     #meteor
     meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
     scoresMatrice[sentCounter][2]=meteorScore
-    
+    """
     # wer
     wer = WER(rw, hw)
     distance, path, ref_mod, hyp_mod = wer.distance()
     werScore=100 * distance[len(rw)][len(hw)]/len(rw)
-    scoresMatrice[sentCounter][3]=werScore
+    scoresMatrice[sentCounter][3]='%.2f' % werScore
 
 
     #ter
-    terScore='%.3f' % pyter.ter(hw, rw)
+    terScore='%.2f' % pyter.ter(hw, rw)
     scoresMatrice[sentCounter][4]=terScore
 
 
@@ -292,8 +293,138 @@ def scoresProcessingSentence(r,h,sentCounter):
 def test(r,h,sc):
     time.sleep(sc/10)
 
+#### score processing functions ####
 
-def scoresProcessingColumn(refArray,hypArray):
+
+def bleu(r,h,sentCounter):
+    
+    global scoresMatrice
+
+    b=sacrebleu.corpus_bleu([h], [[r]])
+    bleu_splitted=str(b).split()
+    sentScoreBleu=bleu_splitted[2]
+    scoresMatrice[sentCounter][0]=sentScoreBleu
+
+
+def meteor(r,h,sentCounter):
+
+    global scoresMatrice
+
+    
+    #meteor
+    meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+    scoresMatrice[sentCounter][2]=meteorScore
+    
+
+def wer(rw,hw,sentCounter):
+
+    global scoresMatrice
+
+    # wer
+    wer = WER(rw, hw)
+    distance, path, ref_mod, hyp_mod = wer.distance()
+    werScore=100 * distance[len(rw)][len(hw)]/len(rw)
+    scoresMatrice[sentCounter][3]=werScore
+
+def ter(rw,hw,sentCounter):
+
+    global scoresMatrice
+
+    #ter
+    terScore='%.3f' % pyter.ter(hw, rw)
+    scoresMatrice[sentCounter][4]=terScore
+
+    print("SENTENCE ",sentCounter+1, " calculus completed")
+
+
+def nist(rw,hw,sentCounter):
+    
+    global scoresMatrice
+
+    #nist
+    # the nist algorithms calcules with a default highest ngrams order equaled to 5
+    # so when the length of the sentence is below 5, a ZeroDivisionError occurs
+    # we need to handle it:
+    n=5
+    while True:
+        try:
+            nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
+            break;
+        except ZeroDivisionError:
+            print("Nist reevaluation... Decreasing of the highest n-gram order... ")
+            n-=1
+    scoresMatrice[sentCounter][1]=nistScore
+
+######
+
+#####
+
+def scoresProcessingColumn_ScoreThreads(refArray,hypArray):
+    
+    global scoresMatrice
+
+    l=len(refArray)
+    scoresMatrice = [[None] * 5 for i in range(l)]
+    sentCounter=0
+    
+
+    for r,h in zip(refArray,hypArray):
+        
+        #wordnet.ensure_loaded()
+        threadList=list()
+        
+        rw=r.split(" ")
+        hw=h.split(" ")
+        
+        print("LINE ",sentCounter+1)
+        print(r)
+        print(h)
+
+
+        """
+        #tests without multithreading
+        bleu(r,h,sentCounter)
+        nist(rw,hw,sentCounter)
+        meteor(r,h,sentCounter)
+        ter(rw,hw,sentCounter)
+        wer(rw,hw,sentCounter)
+        """
+        
+        t=Thread(target=bleu, args=(r,h,sentCounter))
+        t.start()
+        threadList.append(t)
+
+        t=Thread(target=nist, args=(rw,hw,sentCounter))
+        t.start()
+        threadList.append(t)
+
+        t=Thread(target=meteor, args=(r,h,sentCounter))
+        t.start()
+        threadList.append(t)   
+        
+        t=Thread(target=wer, args=(rw,hw,sentCounter))
+        t.start()
+        threadList.append(t)   
+
+        t=Thread(target=ter, args=(rw,hw,sentCounter))
+        t.start()
+        threadList.append(t)
+        
+
+        #print(scoresMatrice)
+
+
+        # Join all the threads
+        for t in threadList:
+            t.join()
+        
+        sentCounter+=1
+
+    return scoresMatrice
+
+
+
+def scoresProcessingColumn_SentThreads(refArray,hypArray):
 
     global scoresMatrice
 
@@ -301,17 +432,19 @@ def scoresProcessingColumn(refArray,hypArray):
     scoresMatrice = [[None] * 5 for i in range(l)]
     sentCounter=0
 
-    """
+
+    # solution (doesn't work) for preventing meteor to crash when multithreading is used 
+    #wordnet.ensure_loaded()
+    
 
     while sentCounter<l:
-    
-        #que=Queue()
-        wordnet.ensure_loaded()
-        threadList=list()
 
-        for j in range(10):
-            
+        pList=list()
+
+        for i in range(2):
+
             if sentCounter<l:
+
                 print("LINE ",sentCounter+1)
 
                 r=refArray[sentCounter]
@@ -319,90 +452,30 @@ def scoresProcessingColumn(refArray,hypArray):
                 print(r)
                 print(h)
 
-                #t = Thread(target=lambda q, arg1: q.put(scoresProcessingSentence(r,h,sentCounter)), args=(que, 'queue'))
-                t=Thread(target=scoresProcessingSentence, args=(r,h,sentCounter))
-                #t=Thread(target=test(r,h,sentCounter))
-                t.start()
-                threadList.append(t)
+                
+                #p = Process(target=scoresProcessingSentence, args=(r,h,sentCounter))
+                #pList.append(p)
+                #p.start()
+                
+                scoresProcessingSentence(r,h,sentCounter)
 
-                ## tests without threads
-                #test(r,h,sentCounter)
-                #scoresProcessingSentence(r,h,sentCounter)
 
                 #meteor
                 meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
                 scoresMatrice[sentCounter][2]=meteorScore
-
-
-                print(scoresMatrice)
-
+            
                 sentCounter+=1
-
+            
             else:
                 break
 
-        # Join all the threads
-        for t in threadList:
-            t.join()
-    """
-    """
-    with concurrent.futures.ThreadPoolExecutor(10) as executor:
-        futures=[]
-
-        for r,h in zip(refArray,hypArray):
-    
-            print("LINE ",sentCounter+1)
-
-            print(r)
-            print(h)
-
-            futures.append(executor.submit(scoresProcessingSentence,r,h,sentCounter))
-            sentCounter+=1
-
-            #meteor
-            meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
-            scoresMatrice[sentCounter][2]=meteorScore
-
-        for future in concurrent.futures.as_completed(futures):
-            future.result()
-    
-    """
-    """
-    #wordnet.ensure_loaded()
-    threadList=list()
-
-    for r,h in zip(refArray,hypArray):
-    
-        print("LINE ",sentCounter+1)
-        print(r)
-        print(h)
-
-        #t = Thread(target=test, args=(r,h,sentCounter))
-        #t = Thread(target=scoresProcessingSentence, args=(r,h,sentCounter))
-        #t.start()
-        #threadList.append(t)
-
-        #scoresProcessingSentence(r,h,sentCounter)
-
-    """
-    """
-        #meteor
-        meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
-        scoresMatrice[sentCounter][2]=meteorScore
-    """
-    """
-        test(sentCounter)
-
-        sentCounter+=1
-    """
-    # Join all the threads
-    for t in threadList:
-        t.join()
+        for p in pList:
+            p.join()
 
 
     return scoresMatrice
 
-
+############
 
 def write_all_scores_into_csv():
 
@@ -445,9 +518,10 @@ def write_all_scores_into_csv():
         if (num-2)%6==0:
             epoch+=1
         print("EPOCH ",epoch)
-
+        
+        #wordnet.ensure_loaded()
         # scores calculus for a single column
-        scoresColumn=scoresProcessingColumn(stp[1][1:nTest],predSingleCol)
+        scoresColumn=scoresProcessingColumn_SentThreads(stp[1][1:nTest],predSingleCol)
 
         # insertion of the scores
         for i in range(nbScores):
@@ -582,6 +656,9 @@ exportButton=Button(lf6, text="Exporter les scores dans un fichier csv", width=3
 exportButton.grid(column=0, row=1, pady=root.winfo_screenheight()/20)
 exportButton.bind("<Button-1>", lambda event :export_to_csv(scoresMatrice))
 
+learnButton=Button(lf6, text="Évaluer l'apprentissage", width=30, height=2, bg="#33CCFF")
+learnButton.grid(column=0, row=2, pady=root.winfo_screenheight()/20)
+learnButton.bind("<Button-1>", lambda event :write_all_scores_into_csv())
 
 ################ text widgets ###################
 
@@ -621,7 +698,6 @@ t4.pack(expand=True, fill='both')
 scrollbar4.config(command = t4.yview )
 
 
-write_all_scores_into_csv()
 
 
 mainloop()
