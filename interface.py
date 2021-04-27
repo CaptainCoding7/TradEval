@@ -8,16 +8,18 @@
 from tkinter import*
 from tkinter.filedialog import askopenfilename
 import time
-import asyncio
 import numpy as np
 import pandas as pd
 from enum import Enum
 import os
+import subprocess
 from threading import Thread
 import concurrent.futures
 from multiprocessing import Process
 
+
 import re       # regex
+import io
 from tkinter.ttk import Progressbar
 from tkinter import ttk
 import csv
@@ -27,8 +29,6 @@ from collections import Counter
 from files_manager import *
 
 # import des bibiotheques de calcul de scores
-from bleu import file_bleu
-from bleu import list_bleu
 import sacrebleu
 from nltk.util import ngrams
 from nist import sentence_nist
@@ -38,11 +38,6 @@ from meteor import PorterStemmer
 from meteor import wordnet
 from wer import *
 import pyter
-from algorithims import *
-from match import *
-
-from fuzzywuzzy.fuzzywuzzy import fuzz
-
 
 
 ############### root PRINCIPALE  ######################
@@ -112,6 +107,96 @@ def loadSrcFile():
         i+=1
     ####################################################################
 
+
+
+#### score processing functions ####
+
+
+def bleu(r,h):
+
+    b=sacrebleu.corpus_bleu([h], [[r]])
+    bleu_splitted=str(b).split()
+    sentScoreBleu=bleu_splitted[2]
+    return sentScoreBleu
+
+def nist(rw,hw):
+    
+    #nist
+    # the nist algorithms calcules with a default highest ngrams order equaled to 5
+    # so when the length of the sentence is below 5, a ZeroDivisionError occurs
+    # we need to handle it:
+    n=5
+    while True:
+        try:
+            nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
+            break;
+        except ZeroDivisionError:
+            print("Nist reevaluation... Decreasing of the highest n-gram order... ")
+            n-=1
+    
+    return nistScore
+
+def meteor(r,h):
+    
+    #meteor
+    meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+    return meteorScore
+    
+
+def wer(rw,hw):
+
+    # wer
+    wer = WER(rw, hw)
+    distance, path, ref_mod, hyp_mod = wer.distance()
+    werScore=100 * distance[len(rw)][len(hw)]/len(rw)
+    return werScore
+
+def ter(rw,hw):
+
+    #ter
+    terScore='%.3f' % pyter.ter(hw, rw)
+    return terScore
+
+    print("SENTENCE ",sentCounter+1, " calculus completed")
+
+def rouge(r,h):
+    print("")
+
+
+def fuzzymatch(r,h):
+
+        print("ref: ",r)
+        print("hyp: ",h)
+
+        #first, put the sentences into files
+        f = open("ref_sentence.txt", "w")
+        f.write(r)
+        f.close()
+
+        f = open("hyp_sentence.txt", "w")
+        f.write(h)
+        f.close()
+
+        # compilation
+        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
+        # execution with subprocess
+        cmd="/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.0 --ml 1 --mr 0 < hyp_sentence.txt"
+        fuzzyOutput = subprocess.getoutput(cmd)
+
+        buf=io.StringIO(fuzzyOutput)
+        allOutput=buf.readlines()
+        fuzzyScoreLine=str(allOutput).split()
+        fuzzyScore=fuzzyScoreLine[4].split("\\")[0]
+        fuzzyScore=fuzzyScore.replace("'","")
+        fuzzyScore='%.3f' % float(fuzzyScore)
+
+        # deletion
+        os.system("rm ref_sentence*")
+        os.system("rm hyp_sentence*")
+
+        return fuzzyScore
+
+
 #### FONCTION REALISANT LE CALCUL DES SCORES SUR UN TEXTE CHARGÉ
 
 def evaluate(scoresMatrice):
@@ -145,82 +230,32 @@ def evaluate(scoresMatrice):
 
     scoresMatrice.append(('Numéro de phrase','Phrase de référence', 'Phrase à évaluer','Score Bleu', 'Score Nist', 'Score Meteor','Score Wer', 'Score Ter'))
 
+    fuzzyScores=list()
+
     for r,h in zip(refSent,hypSent):
-        # decomposition au mot pour le calcul du score nist
+
+        # decomposition au mot pour le calcul des scores nist, wer, ter
         rw=r.split(" ")
         hw=h.split(" ")
 
         #bleu
-        #sentScoreBleu=list_bleu([r], [h])
-        b=sacrebleu.corpus_bleu([h], [[r]])
-        bleu_splitted=str(b).split()
-        sentScoreBleu=bleu_splitted[2]
+        sentScoreBleu=bleu(r,h)
 
         #nist
-        # the nist algorithms calcules with a default highest ngrams order equaled to 5
-        # so when the length of the sentence is below 5, a ZeroDivisionError occurs
-        # we need to handle it:
-        n=5
-        while True:
-            try:
-                nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
-                break;
-            except ZeroDivisionError:
-                print("Nist reevaluation... Decreasing of the highest n-gram order... ")
-                n-=1
+        nistScore=nist(rw,hw)
 
         #meteor
-        meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+        meteorScore=meteor(r,h)
 
         # wer
-        wer = WER(rw, hw)
-        distance, path, ref_mod, hyp_mod = wer.distance()
-        werScore=100 * distance[len(rw)][len(hw)]/len(rw)
+        werScore=wer(rw,hw)
 
         #ter
-        terScore='%.3f' % pyter.ter(hw, rw)
+        terScore=ter(rw,hw)
 
-
-        ###### FUZZY MATCHING   /!\ SPLIT PAR GROUPES DE CARACTERES !!
-
+        ###### FUZZY MATCHING
         print("---- Fuzzy Matching: Phrase ",str(i))
-        print("ref: ",r)
-        print("hyp: ",h)
-
-        #first, put the sentences into files
-        f = open("ref_sentence.txt", "w")
-        f.write(r)
-        f.close()
-
-        f = open("hyp_sentence.txt", "w")
-        f.write(h)
-        f.close()
-
-        # compilation
-        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
-        # execution
-        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.3 -N 4 -n 1 [--ml 10] -P < hyp_sentence.txt")
-
-        # deletion
-        os.system("rm ref_sentence*")
-        os.system("rm hyp_sentence*")
-
-
-        # bigrams
-        #print("     Evaluation par groupe de 2 mots: ", trigram(h,r,2))
-        #trigrams
-        #print("     Trigrams algorithm: ", trigram(h,r))
-        #4grams
-        #print("     Evaluation par groupe de 4 mots: ", trigram(h,r,4))
-        #5-grams
-        #print("     Evaluation par groupe de 5 mots: ", trigram(h,r,5))
-
-        #print("     Levenshtein distance algorithm: ", levenshtein(h,r))
-        #print("     Cosine algorithm ", cosine(h,r))
-        #print("     Jaro-Winkler algorithm ", jaro_winkler(h,r))
-        #print("     With fuzzywuzzy package: ", fuzz.token_set_ratio(r,h))
-
-        #print(extractOne(h, [r]))
+        fuzzyScores.append(fuzzymatch(r,h))
 
 
         # affichage et stockage des données dans la matrice des scores
@@ -234,13 +269,20 @@ def evaluate(scoresMatrice):
     #### fin de la boucle for
 
 
+    print("**** FUZZY SCORES: ******")
+    print(fuzzyScores)
+
     popup_window.destroy()
     t4.delete('1.0',END)
     t4.insert(END, str_score)
 
-    
-def scoresProcessingSentence(r,h,sentCounter):
 
+
+
+######
+
+def scoresProcessingSentence(r,h,sentCounter):
+    
     global scoresMatrice
 
     print("******* sentCounter : ",sentCounter, "*******")
@@ -249,179 +291,21 @@ def scoresProcessingSentence(r,h,sentCounter):
     hw=h.split(" ")
 
     #bleu
-    #sentScoreBleu=list_bleu([r], [h])
-    b=sacrebleu.corpus_bleu([h], [[r]])
-    bleu_splitted=str(b).split()
-    sentScoreBleu=bleu_splitted[2]
-    scoresMatrice[sentCounter][0]=sentScoreBleu
+    scoresMatrice[sentCounter][0]=bleu(r,h)
     
     #nist
-    # the nist algorithms calcules with a default highest ngrams order equaled to 5
-    # so when the length of the sentence is below 5, a ZeroDivisionError occurs
-    # we need to handle it:
-    n=5
-    while True:
-        try:
-            nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
-            break;
-        except ZeroDivisionError:
-            print("Nist reevaluation... Decreasing of the highest n-gram order... ")
-            n-=1
-    scoresMatrice[sentCounter][1]=nistScore
+    scoresMatrice[sentCounter][1]=nist(rw,hw)
 
-    """
     #meteor
-    meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
-    scoresMatrice[sentCounter][2]=meteorScore
-    """
+    scoresMatrice[sentCounter][2]=meteor(r,h)
+    
     # wer
-    wer = WER(rw, hw)
-    distance, path, ref_mod, hyp_mod = wer.distance()
-    werScore=100 * distance[len(rw)][len(hw)]/len(rw)
-    scoresMatrice[sentCounter][3]='%.2f' % werScore
-
+    scoresMatrice[sentCounter][3]=wer(rw,hw)
 
     #ter
-    terScore='%.2f' % pyter.ter(hw, rw)
-    scoresMatrice[sentCounter][4]=terScore
-
+    scoresMatrice[sentCounter][4]=ter(rw,hw)
 
     print("SENTENCE ",sentCounter+1, " calculus completed")
-
-
-
-def test(r,h,sc):
-    time.sleep(sc/10)
-
-#### score processing functions ####
-
-
-def bleu(r,h,sentCounter):
-    
-    global scoresMatrice
-
-    b=sacrebleu.corpus_bleu([h], [[r]])
-    bleu_splitted=str(b).split()
-    sentScoreBleu=bleu_splitted[2]
-    scoresMatrice[sentCounter][0]=sentScoreBleu
-
-
-def meteor(r,h,sentCounter):
-
-    global scoresMatrice
-
-    
-    #meteor
-    meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
-    scoresMatrice[sentCounter][2]=meteorScore
-    
-
-def wer(rw,hw,sentCounter):
-
-    global scoresMatrice
-
-    # wer
-    wer = WER(rw, hw)
-    distance, path, ref_mod, hyp_mod = wer.distance()
-    werScore=100 * distance[len(rw)][len(hw)]/len(rw)
-    scoresMatrice[sentCounter][3]=werScore
-
-def ter(rw,hw,sentCounter):
-
-    global scoresMatrice
-
-    #ter
-    terScore='%.3f' % pyter.ter(hw, rw)
-    scoresMatrice[sentCounter][4]=terScore
-
-    print("SENTENCE ",sentCounter+1, " calculus completed")
-
-
-def nist(rw,hw,sentCounter):
-    
-    global scoresMatrice
-
-    #nist
-    # the nist algorithms calcules with a default highest ngrams order equaled to 5
-    # so when the length of the sentence is below 5, a ZeroDivisionError occurs
-    # we need to handle it:
-    n=5
-    while True:
-        try:
-            nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
-            break;
-        except ZeroDivisionError:
-            print("Nist reevaluation... Decreasing of the highest n-gram order... ")
-            n-=1
-    scoresMatrice[sentCounter][1]=nistScore
-
-######
-
-#####
-
-def scoresProcessingColumn_ScoreThreads(refArray,hypArray):
-    
-    global scoresMatrice
-
-    l=len(refArray)
-    scoresMatrice = [[None] * 5 for i in range(l)]
-    sentCounter=0
-    
-
-    for r,h in zip(refArray,hypArray):
-        
-        #wordnet.ensure_loaded()
-        threadList=list()
-        
-        rw=r.split(" ")
-        hw=h.split(" ")
-        
-        print("LINE ",sentCounter+1)
-        print(r)
-        print(h)
-
-
-        """
-        #tests without multithreading
-        bleu(r,h,sentCounter)
-        nist(rw,hw,sentCounter)
-        meteor(r,h,sentCounter)
-        ter(rw,hw,sentCounter)
-        wer(rw,hw,sentCounter)
-        """
-        
-        t=Thread(target=bleu, args=(r,h,sentCounter))
-        t.start()
-        threadList.append(t)
-
-        t=Thread(target=nist, args=(rw,hw,sentCounter))
-        t.start()
-        threadList.append(t)
-
-        t=Thread(target=meteor, args=(r,h,sentCounter))
-        t.start()
-        threadList.append(t)   
-        
-        t=Thread(target=wer, args=(rw,hw,sentCounter))
-        t.start()
-        threadList.append(t)   
-
-        t=Thread(target=ter, args=(rw,hw,sentCounter))
-        t.start()
-        threadList.append(t)
-        
-
-        #print(scoresMatrice)
-
-
-        # Join all the threads
-        for t in threadList:
-            t.join()
-        
-        sentCounter+=1
-
-    return scoresMatrice
-
 
 
 def scoresProcessingColumn_SentThreads(refArray,hypArray):
@@ -449,8 +333,8 @@ def scoresProcessingColumn_SentThreads(refArray,hypArray):
 
                 r=refArray[sentCounter]
                 h=hypArray[sentCounter]
-                print(r)
-                print(h)
+                #print(r)
+                #print(h)
 
                 
                 #p = Process(target=scoresProcessingSentence, args=(r,h,sentCounter))
@@ -543,7 +427,7 @@ def write_all_scores_into_csv():
 
     # write dataframe to csv
     df.to_csv('AllScore.csv',index=False,header=True)
-    print("export ----")
+    print("--- export completed ---")
 
 ##########################################################################""
 
