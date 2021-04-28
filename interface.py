@@ -57,10 +57,26 @@ class FullScreenApp(object):
     # Cette fonction permet de redimensionner la fenetre.
     def toggle_geom(self,event):
         geom=self.master.winfo_geometry()
-        print(geom,self._geom)
+        #print(geom,self._geom)
         self.master.geometry(self._geom)
         self._geom=geom
 
+def closeMenu(popup):
+    global killed
+    killed=True
+    popup.destroy()
+
+def popupmsg(msg):
+    popup = Tk()
+    popup.wm_title("Bienvenue sur TradEval !")
+    label = ttk.Label(popup, text=msg)
+    label.pack(side="top", fill="x", pady=10)
+    B1 = ttk.Button(popup, text="Evaluer un texte", command = popup.destroy)
+    B1.pack()    
+    B2 = ttk.Button(popup, text="Analyser une sortie du logiciel R avec plusieurs scores", command = write_all_scores_into_csv)
+    B2.pack()
+    popup.protocol("WM_DELETE_WINDOW", lambda arg=popup: closeMenu(arg))
+    popup.mainloop()
 
 
 # Chargement fichier de ref
@@ -178,7 +194,7 @@ def fuzzymatch(r,h):
         f.close()
 
         # compilation
-        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
+        subprocess.getoutput("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
         # execution with subprocess
         cmd="/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.0 --ml 1 --mr 0 < hyp_sentence.txt"
         fuzzyOutput = subprocess.getoutput(cmd)
@@ -255,12 +271,12 @@ def evaluate(scoresMatrice):
 
         ###### FUZZY MATCHING
         print("---- Fuzzy Matching: Phrase ",str(i))
-        fuzzyScores.append(fuzzymatch(r,h))
-
+        #fuzzyScores.append(fuzzymatch(r,h))
+        fuzzyScr=fuzzymatch(r,h)
 
         # affichage et stockage des données dans la matrice des scores
-        str_score+='--- Phrase n°'+str(i)+':    - Bleu = '+str(sentScoreBleu)+ '    - Nist = '+str(nistScore)+ '    - Meteor = '+str(meteorScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+'\n'
-        scoresMatrice.append((str(i),r,h,str(sentScoreBleu),str(nistScore), str(meteorScore),'{:.0f}%'.format(werScore), str(terScore)))
+        str_score+='--- Phrase n°'+str(i)+':    - Bleu = '+str(sentScoreBleu)+ '    - Nist = '+str(nistScore)+ '    - Meteor = '+str(meteorScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+'    - FuzzyMatching = '+str(fuzzyScr)+'\n'
+        scoresMatrice.append((str(i),r,h,str(sentScoreBleu),str(nistScore), str(meteorScore),'{:.0f}%'.format(werScore), str(terScore),str(fuzzyScr)))
 
         i+=1
         p.step()
@@ -343,11 +359,12 @@ def scoresProcessingColumn_SentThreads(refArray,hypArray):
                 
                 scoresProcessingSentence(r,h,sentCounter)
 
-
+                """
                 #meteor
                 meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
                 scoresMatrice[sentCounter][2]=meteorScore
-            
+                """
+
                 sentCounter+=1
             
             else:
@@ -363,13 +380,11 @@ def scoresProcessingColumn_SentThreads(refArray,hypArray):
 
 def write_all_scores_into_csv():
 
-    global csvFile
     scoresSent=[]
     scorename=['bleu','nist','meteor','wer','ter']
     nbScores=len(scorename)
 
-
-    csv='/home/paul/Documents/proj_tansv/datasets/adadelta_translation_copie.csv'
+    csv=askopenfilename(initialdir = "./",title = "Selectionner un csv à analyser",filetypes = (("csv files","*.csv"),))
 
     #stp contains (source,target,predictions)
     stp = openLearningCsv(csv)
@@ -378,13 +393,13 @@ def write_all_scores_into_csv():
     epoch=0
     #creation of the dictionnary
     # first we put the source sentences and the target sentences into a dataframe
-    d = {stp[0][0] : stp[0][1:nTest],stp[1][0] : stp[1][1:nTest]}
+    d = {stp[0][0] : stp[0][1:],stp[1][0] : stp[1][1:]}
     df = pd.DataFrame(d)
 
     # headers insertion into the dataframe
     num=1
     nbRow=len(stp[2])
-    nbRow=nTest #test
+    #nbRow=nTest #test
     nbCol=len(stp[2][0])
 
     start=time.time()
@@ -405,7 +420,7 @@ def write_all_scores_into_csv():
         
         #wordnet.ensure_loaded()
         # scores calculus for a single column
-        scoresColumn=scoresProcessingColumn_SentThreads(stp[1][1:nTest],predSingleCol)
+        scoresColumn=scoresProcessingColumn_SentThreads(stp[1][1:],predSingleCol)
 
         # insertion of the scores
         for i in range(nbScores):
@@ -454,12 +469,21 @@ hypFile=''
 refSent=[]
 hypSent=[]
 scoresMatrice=[]
+killed=False
 
+
+def evalTextMAin(popup):
+
+    popup.destroy()
+
+
+welcome="****** Bienvenue sur TradEval ! *****\n"
+popupmsg(welcome)
 
 ### fenetre principale
 root=Tk()
 #app=FullScreenApp(root)
-root.title("Evaluateur de traduction")
+root.title("EvalTrad - Evaluer un texte")
 
 
 ####################  MENU HAUT  ##############################
@@ -540,10 +564,6 @@ exportButton=Button(lf6, text="Exporter les scores dans un fichier csv", width=3
 exportButton.grid(column=0, row=1, pady=root.winfo_screenheight()/20)
 exportButton.bind("<Button-1>", lambda event :export_to_csv(scoresMatrice))
 
-learnButton=Button(lf6, text="Évaluer l'apprentissage", width=30, height=2, bg="#33CCFF")
-learnButton.grid(column=0, row=2, pady=root.winfo_screenheight()/20)
-learnButton.bind("<Button-1>", lambda event :write_all_scores_into_csv())
-
 ################ text widgets ###################
 
 # texte ref
@@ -584,8 +604,9 @@ scrollbar4.config(command = t4.yview )
 
 
 
-mainloop()
-
 #########################################################################################################
 
-root.mainloop()
+if killed:
+    root.destroy()
+else:
+    root.mainloop()
