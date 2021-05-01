@@ -14,3 +14,42 @@ Projet transverse
 ## ntlk (for nist and meteor metrics)
 ```pip3 install nltk```
 (see also https://pypi.org/project/nltk/)
+
+
+## Fuzzy-match - installation des dépendances et compilation c++
+
+- INSTALLER OpenNMT/Tokenizer: <br>
+ installer ICU: `sudo apt-get install -y icu-devtools`<br>
+`git clone https://github.com/OpenNMT/Tokenizer` puis suivre instruction dans la section Compiling de https://github.com/OpenNMT/Tokenizer <br>
+**et faire un** `make install`<br>
+- INSTALLER Boost: `sudo apt-get install libboost-all-dev`<br>
+- INSTALLER GoogleTest (pour les tests juste): <br>
+`sudo apt-get install libgtest-dev`<br>
+`cd /usr/src/googletest/googletest`<br>
+`sudo mkdir build`<br>
+`cd build`<br>
+`sudo cmake ..`<br>
+`sudo make`<br>
+`sudo cp libgtest* /usr/lib/`<br>
+`cd ..`<br>
+`sudo rm -rf build`<br>
+
+`sudo mkdir /usr/local/lib/googletest`<br>
+`sudo ln -s /usr/lib/libgtest.a /usr/local/lib/googletest/libgtest.a`<br>
+`sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/googletest/libgtest_main.a`<br>
+
+(d'apres https://gist.github.com/Cartexius/4c437c084d6e388288201aadf9c8cdd5)<br>
+
+- Suite à l'échange que nous avons eu sur https://stackoverflow.com/questions/66917612/how-to-provide-custom-librairy-locations-with-cmake-variables-compiling-systran?noredirect=1#comment118298287_66917612 , il faut modifier le fichier CMakeLists.txt à la racine de fuzzy-match-master:<br>
+==> remplacer la ligne: <br>
+`find_library(OPENNMT_TOKENIZER_LIB OpenNMTTokenizer REQUIRED HINTS ${OPENNMT_TOKENIZER_ROOT}/lib)`<br>
+par:<br>
+`find_library(OPENNMT_TOKENIZER_LIB OpenNMTTokenizer REQUIRED HINTS ${OPENNMT_TOKENIZER_ROOT}/build)`<br>
+(mettre build a la place de lib car **pas de dossier lib dans Tokeniser**)<br>
+
+- Et enfin compiler:  <br>
+mkdir build<br>
+cd build<br>
+cmake ..<br>
+make<br>
+
