@@ -7,6 +7,13 @@ Projet transverse
 ```pip3 install sacrebleu```
 (see also https://pypi.org/project/sacrebleu/)
 
+## Rouge-score
+```pip install rouge-score```
+(see also https://pypi.org/project/rouge-score/)
+
+## Wer
+
+
 ## Pyter
 ```pip3 install pyter```
 (see also https://pypi.org/project/pyter/)
