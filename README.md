@@ -33,7 +33,6 @@ Projet transverse
 `sudo cp libgtest* /usr/lib/`<br>
 `cd ..`<br>
 `sudo rm -rf build`<br>
-
 `sudo mkdir /usr/local/lib/googletest`<br>
 `sudo ln -s /usr/lib/libgtest.a /usr/local/lib/googletest/libgtest.a`<br>
 `sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/googletest/libgtest_main.a`<br>
