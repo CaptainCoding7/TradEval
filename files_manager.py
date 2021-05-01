@@ -109,7 +109,7 @@ def get_Predictions(rows):
     return predictions
 
 
-def openLearningCsv(f):
+def loadNMTcsv(f):
 
     rows=[]
     #f_in= open('datasets/adadelta_translation_copie.csv','r')
