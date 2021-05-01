@@ -387,7 +387,7 @@ def write_all_scores_into_csv():
     csv=askopenfilename(initialdir = "./",title = "Selectionner un csv à analyser",filetypes = (("csv files","*.csv"),))
 
     #stp contains (source,target,predictions)
-    stp = openLearningCsv(csv)
+    stp = loadNMTcsv(csv)
 
     nTest=5
     epoch=0
