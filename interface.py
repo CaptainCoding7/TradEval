@@ -324,7 +324,7 @@ def scoresProcessingSentence(r,h,sentCounter):
     print("SENTENCE ",sentCounter+1, " calculus completed")
 
 
-def scoresProcessingColumn_SentThreads(refArray,hypArray):
+def scoresProcessingColumn(refArray,hypArray):
 
     global scoresMatrice
 
@@ -420,7 +420,7 @@ def write_all_scores_into_csv():
         
         #wordnet.ensure_loaded()
         # scores calculus for a single column
-        scoresColumn=scoresProcessingColumn_SentThreads(stp[1][1:],predSingleCol)
+        scoresColumn=scoresProcessingColumn(stp[1][1:],predSingleCol)
 
         # insertion of the scores
         for i in range(nbScores):
