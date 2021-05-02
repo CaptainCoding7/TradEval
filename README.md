@@ -7,16 +7,25 @@ Projet transverse
 ```pip3 install sacrebleu```
 (see also https://pypi.org/project/sacrebleu/)
 
+## Nist
+(file from https://www.nltk.org/_modules/nltk/translate/nist_score.html)
+
 ## Rouge-score
 ```pip install rouge-score```
 (see also https://pypi.org/project/rouge-score/)
 
 ## Wer
-
+(file wer.py from https://github.com/zimengq/WER)
 
 ## Pyter
 ```pip3 install pyter```
 (see also https://pypi.org/project/pyter/)
+
+## CharacTER
+pip3 install python-Levenshtein
+sudo apt-get install gcc-multilib g++-multilib
+g++ -c -fPIC -m64 -std=c99 -lm -D_GNU_SOURCE -Wall -pedantic -fopenmp -o ed.o ed.cpp -lstdc++
+g++ -m64 -shared -Wl,-soname,libED.so -o libED.so ed.o
 
 ## ntlk (for nist and meteor metrics)
 ```pip3 install nltk```
