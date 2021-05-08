@@ -26,17 +26,14 @@ from files_manager import *
 import sacrebleu
 from nltk.util import ngrams
 from nist import sentence_nist
-from meteor import single_meteor_score
-from meteor import PorterStemmer
+from nltk.translate.meteor_score import single_meteor_score
+
 # ntlk.download('wordnet')
-from meteor import wordnet
+
 from wer import *
 import pyter
 from algorithims import *
 from match import *
-
-from fuzzywuzzy import fuzz
-
 
 
 ############### root PRINCIPALE  ######################
@@ -89,7 +86,7 @@ def evaluate(scoresMatrice):
                 n-=1
 
         #meteor
-        meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+        meteorScore=float("{:.2f}".format(single_meteor_score(r, h)))
 
         # wer
         wer = WER(rw, hw)
@@ -116,13 +113,13 @@ def evaluate(scoresMatrice):
         f.close()
 
         # compilation
-        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
+        os.system("/home/fuzzy-match/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
         # execution
-        os.system("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.3 -N 4 -n 1 [--ml 10] -P < hyp_sentence.txt")
+        os.system("/home/fuzzy-match/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.3 -N 4 -n 1 [--ml 10] -P < hyp_sentence.txt")
 
         # deletion
-        os.system("rm ref_sentence*")
-        os.system("rm hyp_sentence*")
+        #os.system("rm ref_sentence*")
+        #os.system("rm hyp_sentence*")
 
 
         # bigrams
@@ -227,8 +224,8 @@ def meteor(r,h,sentCounter):
 
     
     #meteor
-    meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
-    scoresMatrice[sentCounter][2]=meteorScore
+    #meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
+    scoresMatrice[sentCounter][2]=0
     
 
 def wer(rw,hw,sentCounter):
@@ -281,7 +278,7 @@ def write_all_scores_into_csv():
     nbScores=len(scorename)
 
 
-    csv='/home/paul/Documents/proj_tansv/datasets/adadelta_translation_copie.csv'
+    csv=' ./adadelta_translation_copie.csv'
 
     #stp contains (source,target,predictions)
     stp = openLearningCsv(csv)
@@ -367,6 +364,18 @@ refSent=[]
 hypSent=[]
 scoresMatrice=[]
 
+arg_len=len(sys.argv)
 
+if arg_len == 1:
+    print("no input files enter")
+elif arg_len == 2:
+    print("csv enter")
+else :
+    print("ref and candidate enter")
+    refFile = sys.argv[1]
+    hypFile = sys.argv[2]
+    evaluate(scoresMatrice)
+    export_to_csv(scoresMatrice)
+    print(refFile)
 
 

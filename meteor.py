@@ -6,9 +6,8 @@
 # URL: <http://nltk.org/>
 # For license information, see LICENSE.TXT
 
-
 from nltk.stem.porter import PorterStemmer
-from nltk.corpus import wordnet
+from nltk.corpus import wordnet as wordnet
 from itertools import chain, product
 
 
@@ -364,6 +363,7 @@ def single_meteor_score(
 
 
 
+
 def meteor_score(
     references,
     hypothesis,
@@ -423,6 +423,7 @@ def meteor_score(
     :return: The sentence-level METEOR score.
     :rtype: float
     """
+
     return max(
         [
             single_meteor_score(
@@ -436,26 +437,40 @@ def meteor_score(
             )
             for reference in references
         ]
-    )
+
+        )
+
+
+def  compute_meteor( ref, hyp):
+    
+    alpha=0.9
+    beta=3
+    gamma=0.5
+    wordne=wordnet
+
+    return single_meteor_score(ref,hyp,stemmer=PorterStemmer(),wordnet=wordne,alpha=alpha,beta=beta,gamma=gamma)
 
 
 '''
 alpha=0.9
 beta=3
 gamma=0.5
+wordn=wordnet
 reference = "hello my name is Pritie"
 hypothesis= "name hello my is Pritie"
 hypothesis2 = "hello my name is Pritie"
 score =single_meteor_score(
-                reference,
-                hypothesis,
-                stemmer=PorterStemmer(),
-                wordnet=wordnet,
-                alpha=alpha,
-                beta=beta,
-                gamma=gamma,
-            )
-print(score);
+                    reference,
+                    hypothesis,
+                   
+                    
+               
+                  
+                   
+                     )
+
+
+print(score)
 score2 =single_meteor_score(
                 reference,
                 hypothesis2,
@@ -465,4 +480,4 @@ score2 =single_meteor_score(
                 beta=beta,
                 gamma=gamma,
             )
-print(score2);'''
+print(score2) '''
