@@ -11,14 +11,14 @@ Projet transverse
 (file from https://www.nltk.org/_modules/nltk/translate/nist_score.html)
 
 ## Rouge-score
-```pip install rouge-score```
+```pip3 install rouge-score```
 (see also https://pypi.org/project/rouge-score/)
 
 ## Wer
 (file wer.py from https://github.com/zimengq/WER)
 
 ## Pyter
-```pip3 install pyter```
+```pip3 install pyter3```
 (see also https://pypi.org/project/pyter/)
 
 ## CharacTER
