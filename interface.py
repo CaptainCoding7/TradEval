@@ -5,8 +5,9 @@
 
 ################ IMPORTATION DES MODULES ##################
 
-from tkinter import*
+from tkinter import *
 from tkinter.filedialog import askopenfilename
+from tkinter.ttk import Progressbar
 import time
 import numpy as np
 import pandas as pd
@@ -20,8 +21,7 @@ from multiprocessing import Process
 
 import re       # regex
 import io
-from tkinter.ttk import Progressbar
-from tkinter import ttk
+
 import csv
 import math
 import fractions
@@ -38,6 +38,7 @@ from meteor import PorterStemmer
 from meteor import wordnet
 from wer import *
 import pyter
+from rouge_score import rouge_scorer
 
 
 ############### root PRINCIPALE  ######################
@@ -66,17 +67,126 @@ def closeMenu(popup):
     killed=True
     popup.destroy()
 
+def openAbout():
+
+    about = Tk()
+    x=about.winfo_screenwidth()*0.3
+    y=about.winfo_screenheight()*0.3
+    about.geometry("+%d+%d" % (x, y))
+
+
+    about_msg = """
+
+    TradEval is licensed under the MIT License
+
+    MIT License
+
+    Copyright (c) 2021 Agopian Paul, Lin Huiting, Sougoumar Pritie, Tahi Yasmine
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+    """
+
+    about.wm_title("About TradEval")
+    label = Label(about, text=about_msg)
+    label.pack(side="top", fill="x", pady=10)
+    about.mainloop()
+   
+
+
+def openManual():
+
+    manual = Tk()
+    x=manual.winfo_screenwidth()*0.3
+    y=manual.winfo_screenheight()*0.3
+    manual.geometry("+%d+%d" % (x, y))
+
+    manual_msg = """
+
+    *** Tiny manual ***
+
+    Option 1: Evaluating a text
+    
+    The first option can be used to evaluate a translation by taking a target translation as a reference.
+    The scores used to evaluate the distace between the two texts are mentionned below:
+
+    Bleu (Papineni et.al., 2002)
+    Nist (Doddington et.al., 2002)
+    Meteor (Banerjee et. al., 2005)
+    WER
+    TER (Snover et. al., 2006)
+    CharacTER (Wang et. al., 2016)
+    Rouge (Liu et. al, 2011)
+    Fuzzy-matching (Xu et.al., 2020)
+
+    =============================================================
+
+    Option 2: Analysing an OpenNMT output with several scores
+
+    The second option can be used to take in input a csv file containg an OpenNMT output.
+    A new csv file with a similar structure is then created, and contains for each epochs the scores
+    mentionned above.
+
+    """
+
+    manual.wm_title("TradEval - Tiny Manual")
+    label = Label(manual, text=manual_msg)
+    label.pack(side="top", fill="x", pady=10)
+    manual.mainloop()
+   
+
+
+
 def popupmsg(msg):
     popup = Tk()
-    popup.wm_title("Bienvenue sur TradEval !")
-    label = ttk.Label(popup, text=msg)
+
+    x=popup.winfo_screenwidth()*0.45
+    y=popup.winfo_screenheight()*0.4
+    popup.geometry("+%d+%d" % (x, y))
+    #popup.bind('<Escape>',self.toggle_geom)
+
+    menubar = Menu(popup)
+
+    menu1 = Menu(menubar, tearoff=0)
+    menu1.add_command(label="Close", command = lambda: closeMenu(popup))
+    menubar.add_cascade(label="File", menu=menu1)
+
+    menu2 = Menu(menubar, tearoff=0)
+    menu2.add_command(label="Tiny manual", command=openManual)
+    menu2.add_command(label="About TradEval", command=openAbout)
+    menubar.add_cascade(label="Help", menu=menu2)
+
+    popup.config(menu=menubar)
+
+
+    popup.wm_title("Welcome on TradEval !")
+    label = Label(popup, text=msg)
     label.pack(side="top", fill="x", pady=10)
-    B1 = ttk.Button(popup, text="Evaluer un texte", command = popup.destroy)
+    B1 = Button(popup, text="Evaluating a text", command = popup.destroy)
     B1.pack()    
-    B2 = ttk.Button(popup, text="Analyser une sortie du logiciel R avec plusieurs scores", command = write_all_scores_into_csv)
+    B2 = Button(popup, text="Analysing an OpenNMT output with several scores", command = lambda: write_all_scores_into_csv(popup))
     B2.pack()
     popup.protocol("WM_DELETE_WINDOW", lambda arg=popup: closeMenu(arg))
     popup.mainloop()
+
+
+    
 
 
 # Chargement fichier de ref
@@ -84,7 +194,7 @@ def popupmsg(msg):
 def loadRefFile():
     #root.withdraw()
     global refFile
-    refFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Selectionner une traduction de reference",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
+    refFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Select a translated reference text",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
     print(refFile+" loaded")
     textToShow=file_to_string(refFile)
     t1.delete('1.0',END)
@@ -99,7 +209,7 @@ def loadRefFile():
 def loadHypFile():
     #root.withdraw()
     global hypFile
-    hypFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Selectionner une traduction à évaluer",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
+    hypFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Select a translated text to evaluate",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
     print(hypFile+" loaded")
     textToShow=file_to_string(hypFile)
     t2.delete('1.0',END)
@@ -112,7 +222,7 @@ def loadHypFile():
 # Chargement fichier source
 
 def loadSrcFile():
-    srcFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Selectionner le texte source",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
+    srcFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Select the source text",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
     print(srcFile+ " loaded")
     textToShow=file_to_string(srcFile)
     t3.delete('1.0',END)
@@ -147,7 +257,7 @@ def nist(rw,hw):
             nistScore = float("{:.2f}".format(sentence_nist([rw], hw, n)))
             break;
         except ZeroDivisionError:
-            print("Nist reevaluation... Decreasing of the highest n-gram order... ")
+            #print("Nist reevaluation... Decreasing of the highest n-gram order... ")
             n-=1
     
     return nistScore
@@ -164,25 +274,41 @@ def wer(rw,hw):
     # wer
     wer = WER(rw, hw)
     distance, path, ref_mod, hyp_mod = wer.distance()
-    werScore=100 * distance[len(rw)][len(hw)]/len(rw)
+    werScore=int(100 *float("{:.2f}".format(distance[len(rw)][len(hw)]/len(rw))))
     return werScore
 
 def ter(rw,hw):
 
     #ter
-    terScore='%.3f' % pyter.ter(hw, rw)
+    terScore=int(100 *float("{:.2f}".format( pyter.ter(hw, rw))))
     return terScore
 
-    print("SENTENCE ",sentCounter+1, " calculus completed")
-
 def rouge(r,h):
-    print("")
+
+    rouge=list()
+
+    scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
+    rougeNotFormated=scorer.score(r,h)
+    rougeStr=str(rougeNotFormated).split()
+
+
+    recall1=rougeStr[2].split('=')
+    rouge1 = '%.2f' % float(recall1[1].split(',')[0])
+
+    recallL=rougeStr[6].split('=')
+    rougeL = '%.2f' % float(recallL[1].split(',')[0])
+
+    rouge.append(rouge1)
+    rouge.append(rougeL)
+    
+    return rouge
+
 
 
 def fuzzymatch(r,h):
 
-        print("ref: ",r)
-        print("hyp: ",h)
+        #print("ref: ",r)
+        #print("hyp: ",h)
 
         #first, put the sentences into files
         f = open("ref_sentence.txt", "w")
@@ -204,7 +330,7 @@ def fuzzymatch(r,h):
         fuzzyScoreLine=str(allOutput).split()
         fuzzyScore=fuzzyScoreLine[4].split("\\")[0]
         fuzzyScore=fuzzyScore.replace("'","")
-        fuzzyScore='%.3f' % float(fuzzyScore)
+        fuzzyScore='%.2f' % float(fuzzyScore)
 
         # deletion
         os.system("rm ref_sentence*")
@@ -225,7 +351,8 @@ def evaluate(scoresMatrice):
 
     # fenetre de chargement
     popup_window = Toplevel()
-    label = Label(popup_window, text = "Veuillez patienter pendant le calcul des scores...")
+    popup_window.title("Evaluation")
+    label = Label(popup_window, text = "Please wait during the scores calculus...")
     label.pack()
     p = Progressbar(popup_window,orient=HORIZONTAL,length=200,mode="determinate",takefocus=True,maximum=len(refSent))
     p.pack()
@@ -244,11 +371,12 @@ def evaluate(scoresMatrice):
     i=1
     str_score=''
 
-    scoresMatrice.append(('Numéro de phrase','Phrase de référence', 'Phrase à évaluer','Score Bleu', 'Score Nist', 'Score Meteor','Score Wer', 'Score Ter'))
+    scoresMatrice.append(('Numéro de phrase','Phrase de référence', 'Phrase à évaluer','Bleu', 'Score Nist', 'Score Meteor','Score Wer', 'Score Ter', 'Score Rouge1', 'Score RougeL', 'Score de Fuzzy Matching'))
 
     fuzzyScores=list()
 
     for r,h in zip(refSent,hypSent):
+
 
         # decomposition au mot pour le calcul des scores nist, wer, ter
         rw=r.split(" ")
@@ -269,24 +397,30 @@ def evaluate(scoresMatrice):
         #ter
         terScore=ter(rw,hw)
 
+        #rouge
+        rougeScores=rouge(r,h)
+        rouge1=rougeScores[0]
+        rougeL=rougeScores[1]
+
         ###### FUZZY MATCHING
-        print("---- Fuzzy Matching: Phrase ",str(i))
+        #print("---- Fuzzy Matching: Phrase ",str(i))
         #fuzzyScores.append(fuzzymatch(r,h))
         fuzzyScr=fuzzymatch(r,h)
 
         # affichage et stockage des données dans la matrice des scores
-        str_score+='--- Phrase n°'+str(i)+':    - Bleu = '+str(sentScoreBleu)+ '    - Nist = '+str(nistScore)+ '    - Meteor = '+str(meteorScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+'    - FuzzyMatching = '+str(fuzzyScr)+'\n'
-        scoresMatrice.append((str(i),r,h,str(sentScoreBleu),str(nistScore), str(meteorScore),'{:.0f}%'.format(werScore), str(terScore),str(fuzzyScr)))
+        str_score += '--- Sentence n°' + str(i)+':    - Bleu = ' + str(sentScoreBleu)+ '    - Nist = ' + str(nistScore) + '    - Meteor = ' + str(meteorScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+ '    - Rouge1 (recall) = '+rouge1+ '    - RougeL = '+rougeL+'    - Fuzzy Matching = '+str(fuzzyScr)+'\n'
+        scoresMatrice.append((str(i),r,h,str(sentScoreBleu), str(nistScore), str(meteorScore), '{:.0f}%'.format(werScore), str(terScore), rouge1, rougeL, str(fuzzyScr)))
 
         i+=1
+
         p.step()
         root.update()
 
     #### fin de la boucle for
 
 
-    print("**** FUZZY SCORES: ******")
-    print(fuzzyScores)
+    #print("**** FUZZY SCORES: ******")
+    #print(fuzzyScores)
 
     popup_window.destroy()
     t4.delete('1.0',END)
@@ -301,7 +435,7 @@ def scoresProcessingSentence(r,h,sentCounter):
     
     global scoresMatrice
 
-    print("******* sentCounter : ",sentCounter, "*******")
+    #print("******* sentCounter : ",sentCounter, "*******")
 
     rw=r.split(" ")
     hw=h.split(" ")
@@ -321,15 +455,24 @@ def scoresProcessingSentence(r,h,sentCounter):
     #ter
     scoresMatrice[sentCounter][4]=ter(rw,hw)
 
-    print("SENTENCE ",sentCounter+1, " calculus completed")
+    # rouge (rouge1 and rougeL)
+    rougeScore=rouge(r,h)
+    scoresMatrice[sentCounter][5]=rougeScore[0]
+    scoresMatrice[sentCounter][6]=rougeScore[1]
+
+    # fuzzymatch
+    scoresMatrice[sentCounter][7]=fuzzymatch(r,h)
 
 
-def scoresProcessingColumn(refArray,hypArray):
+    #print("SENTENCE ",sentCounter+1, " calculus completed")
+
+
+def scoresProcessingColumn_SentThreads(refArray,hypArray):
 
     global scoresMatrice
 
     l=len(refArray)
-    scoresMatrice = [[None] * 5 for i in range(l)]
+    scoresMatrice = [[None] * 8 for i in range(l)]
     sentCounter=0
 
 
@@ -339,72 +482,65 @@ def scoresProcessingColumn(refArray,hypArray):
 
     while sentCounter<l:
 
-        pList=list()
+        #print("LINE ",sentCounter+1)
 
-        for i in range(2):
+        r=refArray[sentCounter]
+        h=hypArray[sentCounter]
+        #print(r)
+        #print(h)
+        
+        scoresProcessingSentence(r,h,sentCounter)
 
-            if sentCounter<l:
-
-                print("LINE ",sentCounter+1)
-
-                r=refArray[sentCounter]
-                h=hypArray[sentCounter]
-                #print(r)
-                #print(h)
-
-                
-                #p = Process(target=scoresProcessingSentence, args=(r,h,sentCounter))
-                #pList.append(p)
-                #p.start()
-                
-                scoresProcessingSentence(r,h,sentCounter)
-
-                """
-                #meteor
-                meteorScore=float("{:.2f}".format(single_meteor_score(r, h, preprocess=str.lower, stemmer=PorterStemmer(), wordnet=wordnet, alpha=0.9, beta=3, gamma=0.5)))
-                scoresMatrice[sentCounter][2]=meteorScore
-                """
-
-                sentCounter+=1
-            
-            else:
-                break
-
-        for p in pList:
-            p.join()
+        sentCounter+=1
 
 
     return scoresMatrice
 
 ############
 
-def write_all_scores_into_csv():
+def write_all_scores_into_csv(menu):
 
     scoresSent=[]
-    scorename=['bleu','nist','meteor','wer','ter']
+    scorename=['bleu','nist','meteor','wer','ter','rouge1', 'rougeL', 'fuzzymatching']
     nbScores=len(scorename)
 
-    csv=askopenfilename(initialdir = "./",title = "Selectionner un csv à analyser",filetypes = (("csv files","*.csv"),))
+    csv=askopenfilename(initialdir = "./",title = "Select a csv to analyse",filetypes = (("csv files","*.csv"),))
 
     #stp contains (source,target,predictions)
-    stp = loadNMTcsv(csv)
+    stp = openLearningCsv(csv)
 
-    nTest=5
+    nTest=10
     epoch=0
     #creation of the dictionnary
     # first we put the source sentences and the target sentences into a dataframe
-    d = {stp[0][0] : stp[0][1:],stp[1][0] : stp[1][1:]}
+    d = {stp[0][0] : stp[0][1:nTest],stp[1][0] : stp[1][1:nTest]}
     df = pd.DataFrame(d)
 
     # headers insertion into the dataframe
     num=1
     nbRow=len(stp[2])
-    #nbRow=nTest #test
+    nbRow=nTest #test
     nbCol=len(stp[2][0])
+
+    # fenetre de chargement
+    popup_window = Toplevel()
+    popup_window.title="Generation of the csv file"
+    label = Label(popup_window, text = "Please wait during the scores calculus...")
+    label.pack()
+    p = Progressbar(popup_window,orient=HORIZONTAL,length=200,mode="determinate",takefocus=True, maximum=nbCol)
+    p.pack()
+    x = menu.winfo_screenwidth()/2
+    y =menu.winfo_screenheight()/2
+    popup_window.geometry('+%d+%d' % (x, y))
+
 
     start=time.time()
     
     for col in range(nbCol):
+
+        p.step()
+        menu.update()
+
         num+=1
         pred_col_name=stp[2][0][col]
 
@@ -416,11 +552,11 @@ def write_all_scores_into_csv():
 
         if (num-2)%6==0:
             epoch+=1
-        print("EPOCH ",epoch)
+        #print("EPOCH ",epoch)
         
         #wordnet.ensure_loaded()
         # scores calculus for a single column
-        scoresColumn=scoresProcessingColumn(stp[1][1:],predSingleCol)
+        scoresColumn=scoresProcessingColumn_SentThreads(stp[1][1:nTest],predSingleCol)
 
         # insertion of the scores
         for i in range(nbScores):
@@ -434,8 +570,13 @@ def write_all_scores_into_csv():
                 #print(scoresColumn[j][i])
             
             df.insert(num,score_col_name,pd.Series(currentScoreArray),True)
+        
+
 
     #print(df)
+
+    popup_window.destroy()
+
 
     end=time.time()
     print("ELAPSED TIME:::: ", end-start)
@@ -444,19 +585,6 @@ def write_all_scores_into_csv():
     df.to_csv('AllScore.csv',index=False,header=True)
     print("--- export completed ---")
 
-##########################################################################""
-
-def convert_pdf_to_txtFile(pdf_path, txt_file):
-# Load your PDF
-	with open(pdf_path, "rb") as f:
-	    pdf = pdftotext.PDF(f)
-	#file = open(txt_file,"a")
-
-
-	for page in pdf:
-	    print(page)
-	 #   file.write(page)
-	#file.close()
 
 
 #######################################   MAIN ###############################
@@ -477,13 +605,13 @@ def evalTextMAin(popup):
     popup.destroy()
 
 
-welcome="****** Bienvenue sur TradEval ! *****\n"
+welcome=" Please choose one of the following options: \n"
 popupmsg(welcome)
 
 ### fenetre principale
 root=Tk()
 #app=FullScreenApp(root)
-root.title("EvalTrad - Evaluer un texte")
+root.title("TradEval - Evaluate a text")
 
 
 ####################  MENU HAUT  ##############################
@@ -495,15 +623,13 @@ root.title("EvalTrad - Evaluer un texte")
 menubar = Menu(root)
 
 menu1 = Menu(menubar, tearoff=0)
-menu1.add_command(label="Ouvrir")
-menu1.add_command(label="Enregistrer")
-menu1.add_separator()
-menu1.add_command(label="Quitter")
-menubar.add_cascade(label="Fichier", menu=menu1)
+menu1.add_command(label="Main Menu",command = lambda: popupmsg(welcome))
+menu1.add_command(label="Close",command = lambda: closeMenu(root))
+menubar.add_cascade(label="File", menu=menu1)
 
 menu2 = Menu(menubar, tearoff=0)
-menu2.add_command(label="A propos")
-menubar.add_cascade(label="Aide", menu=menu2)
+menu2.add_command(label="About", command=openAbout)
+menubar.add_cascade(label="Help", menu=menu2)
 
 root.config(menu=menubar)
 root['bg']="lightblue"
@@ -512,20 +638,20 @@ root['bg']="lightblue"
 ###################  FRAMES  ##########################
 
 
-lf1 = LabelFrame(root, text="Charger fichiers (.txt, .pdf)", height=root.winfo_screenheight()*0.1,width=root.winfo_screenwidth(),bg="lightblue")
+lf1 = LabelFrame(root, text="Load files (.txt, .pdf)", height=root.winfo_screenheight()*0.1,width=root.winfo_screenwidth(),bg="lightblue")
 lf1.grid(row=0,sticky='nw',column=0,columnspan=3)
 lf1.grid_propagate(False)
 
 
-lf2 = LabelFrame(root, text="Traduction de référence",height=root.winfo_screenheight()*0.4,width=root.winfo_screenwidth()/3, bg="lightblue")
+lf2 = LabelFrame(root, text="Target translation",height=root.winfo_screenheight()*0.4,width=root.winfo_screenwidth()/3, bg="lightblue")
 lf2.grid(column=1,row=1)
 lf2.grid_propagate(False)
 
-lf3 = LabelFrame(root, text="Traduction à évaluer",height=root.winfo_screenheight()*0.4,width=root.winfo_screenwidth()/3,bg="lightblue")
+lf3 = LabelFrame(root, text="Translation to evaluate",height=root.winfo_screenheight()*0.4,width=root.winfo_screenwidth()/3,bg="lightblue")
 lf3.grid(row=1,column=2, sticky="e")
 lf3.grid_propagate(False)
 
-lf4 = LabelFrame(root, text="Texte source",height=root.winfo_screenheight()/2,width=root.winfo_screenwidth()/3,bg="lightblue")
+lf4 = LabelFrame(root, text="Source text",height=root.winfo_screenheight()/2,width=root.winfo_screenwidth()/3,bg="lightblue")
 lf4.grid(row=1,column=0, sticky="w")
 lf4.grid_propagate(False)
 
@@ -533,7 +659,7 @@ lf5 = LabelFrame(root, text="Scores",height=root.winfo_screenheight()/2,width=ro
 lf5.grid(row=2,column=0, columnspan=2,sticky="n")
 lf5.grid_propagate(False)
 
-lf6 = LabelFrame(root, text="Evaluer",height=root.winfo_screenheight()/2,width=root.winfo_screenwidth()*0.2,bg="lightblue")
+lf6 = LabelFrame(root, text="Evaluate",height=root.winfo_screenheight()/2,width=root.winfo_screenwidth()*0.2,bg="lightblue")
 lf6.grid(row=2,column=2)
 lf6.grid_propagate(False)
 
@@ -541,28 +667,28 @@ lf6.grid_propagate(False)
 
 ###### load buttons
 
-loadFileButton1=Button(lf1, text='Charger le texte traduit de référence', width=30, height=2, bg="white")
+loadFileButton1=Button(lf1, text='Load the translated target text', width=30, height=2, bg="white")
 loadFileButton1.grid(column=1, row=0, padx=root.winfo_screenwidth()/6, pady=root.winfo_screenheight()/50)
 loadFileButton1.bind("<Button-1>", lambda event :loadRefFile())
 
 
-loadFileButton2=Button(lf1, text='Charger le texte traduit à évaluer', width=30, height=2, bg="white")
+loadFileButton2=Button(lf1, text='Load the tanslated text to evaluate', width=30, height=2, bg="white")
 loadFileButton2.grid(column=2, row=0, padx=root.winfo_screenwidth()/20, pady=root.winfo_screenheight()/50)
 loadFileButton2.bind("<Button-1>", lambda event :loadHypFile())
 
-loadFileButton3=Button(lf1, text='Charger le texte source (facultatif)', width=30, height=2, bg="white")
+loadFileButton3=Button(lf1, text='Load the source text (optional)', width=30, height=2, bg="white")
 loadFileButton3.grid(column=0, row=0, padx=root.winfo_screenwidth()/20, pady=root.winfo_screenheight()/50)
 loadFileButton3.bind("<Button-1>", lambda event :loadSrcFile())
 
 ### eval buttons
 
-evalButton=Button(lf6, text="Lancer l'évaluation", width=20, height=2, bg="#0099FF")
+evalButton=Button(lf6, text="Start evaluation", width=20, height=2, bg="#0099FF")
 evalButton.grid(column=0, row=0, pady=root.winfo_screenheight()/40, sticky="w")
 evalButton.bind("<Button-1>", lambda event :evaluate(scoresMatrice))
 
-exportButton=Button(lf6, text="Exporter les scores dans un fichier csv", width=30, height=2, bg="#33CCFF")
+exportButton=Button(lf6, text="Export scores in a csv file", width=30, height=2, bg="#33CCFF")
 exportButton.grid(column=0, row=1, pady=root.winfo_screenheight()/20)
-exportButton.bind("<Button-1>", lambda event :export_to_csv(scoresMatrice))
+exportButton.bind("<Button-1>", lambda event :export_to_csv(scoresMatrice, root))
 
 ################ text widgets ###################
 

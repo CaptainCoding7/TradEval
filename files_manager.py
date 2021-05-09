@@ -2,17 +2,37 @@ import csv
 import pdftotext
 import nltk
 from nltk.tokenize import sent_tokenize
+from tkinter.ttk import Progressbar
+from tkinter import HORIZONTAL
+from tkinter import Label
+from tkinter import Toplevel
+
 
 #export des score deans un fichier csv
 '''@param
    @return
 '''
-def export_to_csv(array):
+def export_to_csv(array, root):
+	
+		# fenetre de chargement
+	popup_window = Toplevel()
+	label = Label(popup_window, text = "Please wait during the scores calculus...")
+	label.pack()
+	p = Progressbar(popup_window,orient=HORIZONTAL,length=200,mode="determinate",takefocus=True,maximum=len(array))
+	p.pack()
+	x = root.winfo_screenwidth()/2
+	y = root.winfo_screenheight()/2
+	popup_window.geometry('+%d+%d' % (x, y))
+	
 	with open('scores.csv','w') as csvfile:
 		writer = csv.writer(csvfile)
 		for r in array:
 			writer.writerow(r)
+			p.step()
+			root.update()
 		csvfile.close()
+	
+	popup_window.destroy()
 
 #copie le text d'un pdf dqns un fichier .txt
 '''@param String pdf_path, txt_file( chemin des fichiers)
@@ -24,7 +44,7 @@ def convert_pdf_to_txt(pdf_path, txt_file):
 		pdf = pdftotext.PDF(f)
 	f.close()
 	file = open(txt_file,"a")
-	print(pdf)
+	#print(pdf)
 	for page in pdf:
 		one_shot=page.replace("\n"," ")
 		file.write(one_shot)
@@ -109,7 +129,7 @@ def get_Predictions(rows):
     return predictions
 
 
-def loadNMTcsv(f):
+def openLearningCsv(f):
 
     rows=[]
     #f_in= open('datasets/adadelta_translation_copie.csv','r')
@@ -124,7 +144,7 @@ def loadNMTcsv(f):
 
     #print(get_Predictions(rows)[1][0])
     #print(getSource(rows)[0])
-    print(len(getTarget(rows)))
+    print(len(getTarget(rows)), " lignes")
 
     return (source,target,predictions)
 
