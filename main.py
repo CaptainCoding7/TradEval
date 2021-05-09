@@ -157,7 +157,7 @@ def rouge(r,h):
     
     return rouge
 
-def characTer():
+def characTer(r,h):
 
      subprocess.getoutput("g++ -c -fPIC -m64 -std=c99 -lm -D_GNU_SOURCE -Wall -pedantic -fopenmp -o ed.o /home/CharacTER/ed.cpp -lstdc++")
      subprocess.getoutput("g++ -m64 -shared -Wl,-soname,libED.so -o /home/CharacTER/libED.so /home/CharacTER/ed.o")
@@ -253,10 +253,18 @@ def evaluate(scoresMatrice):
         #ter
         terScore=ter(rw,hw)
 
+        #red
+        redScore=rouge(r,h)
+
+
         ###### FUZZY MATCHING
         print("---- Fuzzy Matching: Phrase ",str(i))
         #fuzzyScores.append(fuzzymatch(r,h))
         fuzzyScr=fuzzymatch(r,h)
+
+        #characTER
+        characTer(r,h)
+
 
         # affichage et stockage des données dans la matrice des scores
         str_score+='--- Phrase n°'+str(i)+':    - Bleu = '+str(sentScoreBleu)+ '    - Nist = '+str(nistScore)+ '    - Meteor = '+str(meteorScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+'    - FuzzyMatching = '+str(fuzzyScr)+'\n'
