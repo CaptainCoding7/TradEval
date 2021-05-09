@@ -60,7 +60,7 @@ g++ -m64 -shared -Wl,-soname,libED.so -o libED.so ed.o
 `find_library(OPENNMT_TOKENIZER_LIB OpenNMTTokenizer REQUIRED HINTS ${OPENNMT_TOKENIZER_ROOT}/lib)`<br>
 par:<br>
 `find_library(OPENNMT_TOKENIZER_LIB OpenNMTTokenizer REQUIRED HINTS ${OPENNMT_TOKENIZER_ROOT}/build)`<br>
-(mettre build a la place de lib car **pas de dossier lib dans Tokeniser**)<br>
+(mettre build à la place de lib car **pas de dossier lib dans Tokeniser**)<br>
 
 - Et enfin compiler:  <br>
 mkdir build<br>
