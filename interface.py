@@ -126,14 +126,14 @@ def openManual():
     The first option can be used to evaluate a translation by taking a target translation as a reference.
     The scores used to evaluate the distace between the two texts are mentionned below:
 
-    Bleu (Papineni et.al., 2002)
-    Nist (Doddington et.al., 2002)
-    Meteor (Banerjee et. al., 2005)
+    Bleu (Papineni, 2002)
+    Nist (Doddington, 2002)
+    Meteor (Banerjee, 2005)
     WER
-    TER (Snover et. al., 2006)
-    CharacTER (Wang et. al., 2016)
-    Rouge (Liu et. al, 2011)
-    Fuzzy-matching (Xu et.al., 2020)
+    TER (Snover, 2006)
+    CharacTER (Wang, 2016)
+    Rouge (Liu, 2011)
+    Fuzzy-matching (Xu, 2020)
 
     =============================================================
 
@@ -274,13 +274,13 @@ def wer(rw,hw):
     # wer
     wer = WER(rw, hw)
     distance, path, ref_mod, hyp_mod = wer.distance()
-    werScore=int(100 *float("{:.2f}".format(distance[len(rw)][len(hw)]/len(rw))))
+    werScore=100*float("{:.2f}".format(distance[len(rw)][len(hw)]/len(rw)))
     return werScore
 
 def ter(rw,hw):
 
     #ter
-    terScore=int(100 *float("{:.2f}".format( pyter.ter(hw, rw))))
+    terScore=100*float("{:.2f}".format( pyter.ter(hw, rw)))
     return terScore
 
 def rouge(r,h):
@@ -303,6 +303,27 @@ def rouge(r,h):
     
     return rouge
 
+def characTer(r,h):
+    
+    f = open("ref_sentence.txt", "w")
+    f.write(r)
+    f.close()
+
+    f = open("hyp_sentence.txt", "w")
+    f.write(h)
+    f.close()
+    
+    subprocess.getoutput("g++ -c -fPIC -m64 -std=c99 -lm -D_GNU_SOURCE -Wall -pedantic -fopenmp -o ed.o CharacTER-master/ed.cpp -lstdc++")
+    subprocess.getoutput("g++ -m64 -shared -Wl,-soname,libED.so -o CharacTER-master/libED.so CharacTER-master/ed.o")
+    cmd ="python3 /home/paul/Documents/proj_tansv/CharacTER-master/CharacTER.py -r ref_sentence.txt -o hyp_sentence.txt"
+    #subprocess.getoutput(cmd)
+    characTerScore = subprocess.getoutput(cmd)
+
+    # deletion
+    os.system("rm ref_sentence*")
+    os.system("rm hyp_sentence*")
+
+    return float("{:.2f}".format(100*float("{:.2f}".format(float(characTerScore)))))
 
 
 def fuzzymatch(r,h):
@@ -330,13 +351,13 @@ def fuzzymatch(r,h):
         fuzzyScoreLine=str(allOutput).split()
         fuzzyScore=fuzzyScoreLine[4].split("\\")[0]
         fuzzyScore=fuzzyScore.replace("'","")
-        fuzzyScore='%.2f' % float(fuzzyScore)
+        fuzzyScore=float("{:.2f}".format(float(fuzzyScore)))
 
         # deletion
         os.system("rm ref_sentence*")
         os.system("rm hyp_sentence*")
 
-        return fuzzyScore
+        return float("{:.2f}".format(fuzzyScore))
 
 
 #### FONCTION REALISANT LE CALCUL DES SCORES SUR UN TEXTE CHARGÉ
@@ -371,7 +392,7 @@ def evaluate(scoresMatrice):
     i=1
     str_score=''
 
-    scoresMatrice.append(('Numéro de phrase','Phrase de référence', 'Phrase à évaluer','Bleu', 'Score Nist', 'Score Meteor','Score Wer', 'Score Ter', 'Score Rouge1', 'Score RougeL', 'Score de Fuzzy Matching'))
+    scoresMatrice.append(('Numéro de phrase','Phrase de référence', 'Phrase à évaluer','Bleu', 'Score Nist', 'Score Meteor','Score Wer', 'Score Ter', 'Score characTER', 'Score Rouge1', 'Score RougeL', 'Score de Fuzzy Matching'))
 
     fuzzyScores=list()
 
@@ -397,6 +418,9 @@ def evaluate(scoresMatrice):
         #ter
         terScore=ter(rw,hw)
 
+        #characTER
+        characTerScore=characTer(r,h)
+
         #rouge
         rougeScores=rouge(r,h)
         rouge1=rougeScores[0]
@@ -408,8 +432,8 @@ def evaluate(scoresMatrice):
         fuzzyScr=fuzzymatch(r,h)
 
         # affichage et stockage des données dans la matrice des scores
-        str_score += '--- Sentence n°' + str(i)+':    - Bleu = ' + str(sentScoreBleu)+ '    - Nist = ' + str(nistScore) + '    - Meteor = ' + str(meteorScore)+ '    - Wer = '+'{:.0f}%'.format(werScore)+ '    - Ter = '+terScore+ '    - Rouge1 (recall) = '+rouge1+ '    - RougeL = '+rougeL+'    - Fuzzy Matching = '+str(fuzzyScr)+'\n'
-        scoresMatrice.append((str(i),r,h,str(sentScoreBleu), str(nistScore), str(meteorScore), '{:.0f}%'.format(werScore), str(terScore), rouge1, rougeL, str(fuzzyScr)))
+        str_score += '* Sent.' + str(i)+':  - Bleu = ' + str(sentScoreBleu)+ '  - Nist = ' + str(nistScore) + '  - Meteor = ' + str(meteorScore)+ '  - Wer = '+'{:.0f}%'.format(werScore)+ '%   - Ter = '+ str(terScore)+ '%   - CharacTer = ' + str(characTerScore) + '%   - Rouge1 = '+ str(rouge1)+ '  - RougeL = ' + str(rougeL) + '  - FM = '+str(fuzzyScr)+'\n'
+        scoresMatrice.append((str(i),r,h,str(sentScoreBleu), str(nistScore), str(meteorScore), '{:.0f}%'.format(werScore), str(characTerScore), str(terScore), str(rouge1), str(rougeL), str(fuzzyScr)))
 
         i+=1
 
@@ -455,13 +479,16 @@ def scoresProcessingSentence(r,h,sentCounter):
     #ter
     scoresMatrice[sentCounter][4]=ter(rw,hw)
 
+    #characTER
+    scoresMatrice[sentCounter][5]=ter(rw,hw)
+
     # rouge (rouge1 and rougeL)
     rougeScore=rouge(r,h)
-    scoresMatrice[sentCounter][5]=rougeScore[0]
-    scoresMatrice[sentCounter][6]=rougeScore[1]
+    scoresMatrice[sentCounter][6]=rougeScore[0]
+    scoresMatrice[sentCounter][7]=rougeScore[1]
 
     # fuzzymatch
-    scoresMatrice[sentCounter][7]=fuzzymatch(r,h)
+    scoresMatrice[sentCounter][8]=fuzzymatch(r,h)
 
 
     #print("SENTENCE ",sentCounter+1, " calculus completed")
@@ -472,7 +499,7 @@ def scoresProcessingColumn_SentThreads(refArray,hypArray):
     global scoresMatrice
 
     l=len(refArray)
-    scoresMatrice = [[None] * 8 for i in range(l)]
+    scoresMatrice = [[None] * 9 for i in range(l)]
     sentCounter=0
 
 
@@ -501,7 +528,7 @@ def scoresProcessingColumn_SentThreads(refArray,hypArray):
 def write_all_scores_into_csv(menu):
 
     scoresSent=[]
-    scorename=['bleu','nist','meteor','wer','ter','rouge1', 'rougeL', 'fuzzymatching']
+    scorename=['bleu','nist','meteor','wer','ter', 'characTER', 'rouge1', 'rougeL', 'fuzzymatching']
     nbScores=len(scorename)
 
     csv=askopenfilename(initialdir = "./",title = "Select a csv to analyse",filetypes = (("csv files","*.csv"),))
@@ -655,7 +682,7 @@ lf4 = LabelFrame(root, text="Source text",height=root.winfo_screenheight()/2,wid
 lf4.grid(row=1,column=0, sticky="w")
 lf4.grid_propagate(False)
 
-lf5 = LabelFrame(root, text="Scores",height=root.winfo_screenheight()/2,width=root.winfo_screenwidth()*0.8,bg="#33CCFF")
+lf5 = LabelFrame(root, text="Scores",height=root.winfo_screenheight()/2,width=root.winfo_screenwidth()*0.9,bg="#33CCFF")
 lf5.grid(row=2,column=0, columnspan=2,sticky="n")
 lf5.grid_propagate(False)
 
