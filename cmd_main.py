@@ -30,10 +30,10 @@ from files_manager_cmd import *
 import sacrebleu
 from nltk.util import ngrams
 from nist import sentence_nist
-from meteor import single_meteor_score
-from meteor import PorterStemmer
+from meteor_score import single_meteor_score
+from meteor_score import PorterStemmer
 # ntlk.download('wordnet')
-from meteor import wordnet
+from meteor_score import wordnet
 from wer import *
 import pyter
 from rouge_score import rouge_scorer
