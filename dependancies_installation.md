@@ -1,6 +1,6 @@
 
 # Python3 librairies installation
--- FICHIER REPERTORIANT LES COMMANDES POUR L'INSTALLATION DES DEPEDANCES (utiles pour la mise en place du docker) --
+-- FICHIER REPERTORIANT LES COMMANDES POUR L'INSTALLATION DES DEPENDANCES (utile pour la mise en place du docker) --
 
 ## Sacrebleu
 ```pip3 install sacrebleu```
