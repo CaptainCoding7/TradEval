@@ -65,8 +65,8 @@ Open a terminal.<br>
 First, pull the image of the project:<br>
 `sudo docker pull pritie/tradeval2`<br>
 Then enter:
-`docker run -ti --rm -e DISPLAY=IP_ADDRESS:0.0 -v /home:/path_host tradeval2`<br>
-with YOUR_IP_ADRESS corresponding to your IP adress. You can find it by typing the command `ipconfig` (windows/mac os) or `ifconfig` (ubuntu) on a terminal.<br>
+`docker run -ti --rm -e DISPLAY=IP_ADDRESS:0.0 -v /:/path_host tradeval2`<br>
+with IP_ADRESS corresponding to your IP adress. You can find it by typing the command `ipconfig` (windows/mac os) or `ifconfig` (ubuntu) on a terminal.<br>
 
 You can know execute the python script: `python3 /home/TradEval/tradEval.py`<br><br><br>
 
