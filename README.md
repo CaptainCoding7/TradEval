@@ -36,7 +36,13 @@ g++ -m64 -shared -Wl,-soname,libED.so -o libED.so ed.o
 
 - INSTALLER OpenNMT/Tokenizer: <br>
  installer ICU: `sudo apt-get install -y icu-devtools`<br>
-`git clone https://github.com/OpenNMT/Tokenizer` puis suivre instruction dans la section Compiling de https://github.com/OpenNMT/Tokenizer <br>
+`git clone https://github.com/OpenNMT/Tokenizer` puis suivre instructions dans la section Compiling de https://github.com/OpenNMT/Tokenizer : <br>
+ Dans le dossier Tokenize:<br>
+`git submodule update --init`<br>
+`mkdir build`<br>
+`cd build`<br>
+`cmake ..`<br>
+`make`<br>
 **et faire un** `make install`<br>
 - INSTALLER Boost: `sudo apt-get install libboost-all-dev`<br>
 - INSTALLER GoogleTest (pour les tests juste): <br>
