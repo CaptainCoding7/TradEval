@@ -7,7 +7,7 @@
 (see also https://pypi.org/project/sacrebleu/)
 
 ## Nist
-(file from https://www.nltk.org/_modules/nltk/translate/nist_score.html)
+(file nist.py from https://www.nltk.org/_modules/nltk/translate/nist_score.html)
 
 ## Rouge-score
 ```pip3 install rouge-score```
