@@ -34,7 +34,7 @@ On Mac OS, we use the server XQuartz<br>
 
 Once the X Server is installed and configured, all you need to do is entering the following commands in a terminal:<br>
 
-`sudo docker pull pritie/tradeval2`
-`docker run -ti --rm -e DISPLAY=YOUR_IP_ADRESS tradEval`
+`sudo docker pull pritie/tradeval2`<br>
+`docker run -ti --rm -e DISPLAY=YOUR_IP_ADRESS tradEval`<br>
 
 with YOUR_IP_ADRESS corresponding to your IP adress. You can find it by typing the command `ipconfig` (windows/mac os) or `ifconfig` (ubuntu) on a terminal.
