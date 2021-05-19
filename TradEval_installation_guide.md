@@ -7,7 +7,7 @@ For Windows and Mac, we will use a Windows X Server.<br>
 
 
 
-## 2. Installation and running of the Windows X Server
+## 2. MAC OS / WINDOWS: Installation and running of the Windows X Server
 
 ### Windows
 
@@ -29,3 +29,11 @@ On Mac OS, we use the server XQuartz<br>
 - Accept the licence agreement, click on Install
 - Once the installation is done, log out from your session and log back in
 
+
+## 3. Running TradEval with Docker
+
+Once the X Server is installed and configured, all you need to do is entering the following command in a terminal:<br>
+
+`docker run -ti --rm -e DISPLAY=YOUR_IP_ADRESS tradEval`
+
+with YOUR_IP_ADRESS corresponding to your IP adress. You can find it by typing the command `ipconfig` (windows/mac os) or `ifconfig` (ubuntu) on a terminal.
