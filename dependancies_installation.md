@@ -1,3 +1,5 @@
+-- FICHIER REPERTORIANT LES COMMANDES POUR L'INSTALLATION DES DEPEDANCES (utiles pour la mise en place du docker) --
+
 # ScoresTranslation
 Projet transverse
 
@@ -37,7 +39,7 @@ g++ -m64 -shared -Wl,-soname,libED.so -o libED.so ed.o
 - INSTALLER OpenNMT/Tokenizer: <br>
  installer ICU: `sudo apt-get install -y icu-devtools`<br>
 `git clone https://github.com/OpenNMT/Tokenizer` puis suivre instructions dans la section Compiling de https://github.com/OpenNMT/Tokenizer : <br>
- Dans le dossier Tokenize:<br>
+ Dans le dossier Tokenizer:<br>
 `git submodule update --init`<br>
 `mkdir build`<br>
 `cd build`<br>
