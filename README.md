@@ -38,9 +38,6 @@ On Ubuntu, we use xauth:<br>
 ## 3. Running TradEval with Docker
 
 
-### Windows / Mac OS
-
-
 ### Ubuntu
 
 Once the X Server is installed and configured, you need to enter the following commands in a terminal.<br>
