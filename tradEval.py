@@ -540,13 +540,13 @@ def write_all_scores_into_csv(menu):
     epoch=0
     #creation of the dictionnary
     # first we put the source sentences and the target sentences into a dataframe
-    d = {stp[0][0] : stp[0][1:nTest],stp[1][0] : stp[1][1:nTest]}
+    d = {stp[0][0] : stp[0][1:],stp[1][0] : stp[1][1:]}
     df = pd.DataFrame(d)
 
     # headers insertion into the dataframe
     num=1
     nbRow=len(stp[2])
-    nbRow=nTest #test
+    #nbRow=nTest #test
     nbCol=len(stp[2][0])
 
     # fenetre de chargement
@@ -583,7 +583,7 @@ def write_all_scores_into_csv(menu):
         
         #wordnet.ensure_loaded()
         # scores calculus for a single column
-        scoresColumn=scoresProcessingColumn_SentThreads(stp[1][1:nTest],predSingleCol)
+        scoresColumn=scoresProcessingColumn_SentThreads(stp[1][1:],predSingleCol)
 
         # insertion of the scores
         for i in range(nbScores):
