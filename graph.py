@@ -14,7 +14,13 @@ epochs=[]
 for i in range(1,31):
     tab=[]
     for k in range(3+(i-1)*9,11+(i-1)*9):
-        tab.append(float(rows[5][k]))   # rows[l][k] avec l la ligne de phrase
+        p1=float(rows[1][k])
+        p2=float(rows[2][k])
+        p1=float(rows[3][k])
+        p1=float(rows[4][k])
+        p1=float(rows[5][k]) # rows[l][k] avec l la ligne de phrase
+        moy=(p1+p2+p3+p4+p5)/5.0
+        tab.append(moy)
     epochs.append(tab)
 
 
