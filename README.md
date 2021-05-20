@@ -14,7 +14,7 @@ First you need to install Docker.
 
 ## Ubuntu
 - Dowload Docker at https://docs.docker.com/engine/install/ubuntu/
-
+<br><br>
 - Install it 
 - Run Docker
 
