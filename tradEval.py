@@ -124,7 +124,7 @@ def openManual():
     Option 1: Evaluating a text
     
     The first option can be used to evaluate a translation by taking a target translation as a reference.
-    The scores used to evaluate the distace between the two texts are mentionned below:
+    The scores used to evaluate the distance between the two texts are mentionned below:
 
     Bleu (Papineni, 2002)
     Nist (Doddington, 2002)
@@ -135,12 +135,14 @@ def openManual():
     Rouge (Liu, 2011)
     Fuzzy-matching (Xu, 2020)
 
+    A csv file containing the scores called "scores.csv" can be created.
+
     =============================================================
 
     Option 2: Analysing an OpenNMT output with several scores
 
     The second option can be used to take in input a csv file containg an OpenNMT output.
-    A new csv file with a similar structure is then created, and contains for each epochs the scores
+    A new csv file called "AllScore.csv" with a similar structure is then created, and contains for each epochs the scores
     mentionned above.
 
     """
