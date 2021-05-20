@@ -5,7 +5,16 @@ We will use a Windows X Server which will depend on the OS.<br>
 
 ## 1. Docker installation and configuration
 First you need to install Docker. 
-- Download Docker at https://www.docker.com/get-started
+
+## Windows
+- Download Docker at https://docs.docker.com/docker-for-windows/install/
+
+## Mac OS
+- Dowload Docker at https://docs.docker.com/docker-for-mac/install/
+
+## Ubuntu
+- Dowload Docker at https://docs.docker.com/engine/install/ubuntu/
+
 - Install it 
 - Run Docker
 
