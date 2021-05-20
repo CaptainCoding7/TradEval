@@ -32,10 +32,10 @@ from files_manager import *
 import sacrebleu
 from nltk.util import ngrams
 from nist import sentence_nist
-from meteor_score import single_meteor_score
-from meteor_score import PorterStemmer
+from meteor import single_meteor_score
+from meteor import PorterStemmer
 # ntlk.download('wordnet')
-from meteor_score import wordnet
+from meteor import wordnet
 from wer import *
 import pyter
 from rouge_score import rouge_scorer
@@ -194,7 +194,7 @@ def popupmsg(msg):
 def loadRefFile():
     #root.withdraw()
     global refFile
-    refFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Select a translated reference text",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
+    refFile=askopenfilename(initialdir = "/path_host",title = "Select a translated reference text",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
     print(refFile+" loaded")
     textToShow=file_to_string(refFile)
     t1.delete('1.0',END)
@@ -209,7 +209,7 @@ def loadRefFile():
 def loadHypFile():
     #root.withdraw()
     global hypFile
-    hypFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Select a translated text to evaluate",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
+    hypFile=askopenfilename(initialdir = "/path_host",title = "Select a translated text to evaluate",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
     print(hypFile+" loaded")
     textToShow=file_to_string(hypFile)
     t2.delete('1.0',END)
@@ -222,7 +222,7 @@ def loadHypFile():
 # Chargement fichier source
 
 def loadSrcFile():
-    srcFile=askopenfilename(initialdir = "/home/paul/Documents/proj_tansv/datasets",title = "Select the source text",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
+    srcFile=askopenfilename(initialdir = "/path_host",title = "Select the source text",filetypes = (("txt files","*.txt"),("pdf files","*.pdf")))
     print(srcFile+ " loaded")
     textToShow=file_to_string(srcFile)
     t3.delete('1.0',END)
@@ -315,7 +315,7 @@ def characTer(r,h):
     
     subprocess.getoutput("g++ -c -fPIC -m64 -std=c99 -lm -D_GNU_SOURCE -Wall -pedantic -fopenmp -o ed.o CharacTER-master/ed.cpp -lstdc++")
     subprocess.getoutput("g++ -m64 -shared -Wl,-soname,libED.so -o CharacTER-master/libED.so CharacTER-master/ed.o")
-    cmd ="python3 /home/paul/Documents/proj_tansv/CharacTER-master/CharacTER.py -r ref_sentence.txt -o hyp_sentence.txt"
+    cmd ="python3 /home/CharacTER/CharacTER.py -r ref_sentence.txt -o hyp_sentence.txt"
     #subprocess.getoutput(cmd)
     characTerScore = subprocess.getoutput(cmd)
 
@@ -341,9 +341,9 @@ def fuzzymatch(r,h):
         f.close()
 
         # compilation
-        subprocess.getoutput("/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
+        subprocess.getoutput("/home/fuzzy-match/build/cli/src/FuzzyMatch-cli -c ref_sentence.txt")
         # execution with subprocess
-        cmd="/home/paul/Documents/proj_tansv/fuzzy-match-master/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.0 --ml 1 --mr 0 < hyp_sentence.txt"
+        cmd="/home/fuzzy-match/build/cli/src/FuzzyMatch-cli en -i ref_sentence.txt.fmi -a match -f 0.0 --ml 1 --mr 0 < hyp_sentence.txt"
         fuzzyOutput = subprocess.getoutput(cmd)
 
         buf=io.StringIO(fuzzyOutput)
