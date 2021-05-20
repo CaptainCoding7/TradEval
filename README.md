@@ -4,7 +4,10 @@ We use a Docker container to run TradEval on Windows, Mac OS and Ubuntu.<br>
 We will use a Windows X Server which will depend on the OS.<br>
 
 ## 1. Docker installation and configuration
-
+First you need to install Docker. 
+- Download Docker at https://www.docker.com/get-started
+- Install it 
+- Run Docker
 
 
 ## 2. Installation and running of the Windows X Server
